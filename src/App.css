@@ -1,0 +1,78 @@
+/* src/App.css */
+@import url('https://fonts.googleapis.com/css2?family=Anuphan:wght@300;400;500;600;700&display=swap');
+
+:root {
+    --primary-blue: #2563eb;
+    --secondary-blue: #eff6ff;
+    --text-main: #1e293b;
+    --text-muted: #64748b;
+    --bg-body: #f8fafc;
+}
+
+/* ตั้งค่าฟอนต์ทั้งระบบ */
+* {
+    font-family: 'Anuphan', sans-serif !important;
+    transition: all 0.2s ease-in-out;
+}
+
+body {
+    background-color: var(--bg-body);
+    color: var(--text-main);
+    margin: 0;
+}
+
+/* ตกแต่ง Card Dashboard ให้ดูโมเดิร์น */
+.modern-card {
+    background: white;
+    border-radius: 24px;
+    /* โค้งมนมากขึ้น */
+    border: 1px solid rgba(226, 232, 240, 0.5);
+    box-shadow: 0 4px 15px -3px rgba(0, 0, 0, 0.05);
+    padding: 1.5rem;
+}
+
+.modern-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 12px 25px -5px rgba(0, 0, 0, 0.08);
+    border-color: rgba(37, 99, 235, 0.2);
+}
+
+/* ปรับแต่งปุ่ม Nav */
+.nav-item-active {
+    color: var(--primary-blue);
+    font-weight: 600;
+    position: relative;
+}
+
+.nav-item-active::after {
+    content: '';
+    position: absolute;
+    bottom: -4px;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background: var(--primary-blue);
+    border-radius: 10px;
+}
+
+/* ส่วนหัวข้อหมู่บ้านในสรุป */
+.village-tag {
+    background: var(--secondary-blue);
+    color: var(--primary-blue);
+    padding: 4px 12px;
+    border-radius: 99px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+/* ปรับแต่ง Scrollbar ให้ดูสะอาด */
+.scrollbar-hide::-webkit-scrollbar {
+    display: none;
+}
+
+.recharts-legend-item-text {
+    font-weight: 500 !important;
+    color: #475569 !important;
+    /* สีเทาเข้มกำลังดี */
+    margin-left: 4px;
+}
