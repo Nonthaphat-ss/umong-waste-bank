@@ -24,8 +24,7 @@ import {
 // ส่วนนี้คือการสร้าง "ชิ้นส่วนเล็กๆ" ไว้ข้างนอก เพื่อให้ตัว App หลักเรียกใช้ได้ง่ายและไม่รก
 
 
-// ชุดสีสำหรับใช้ในกราฟวงกลม (Pie Chart) 9 หมวด และประเภทขยะ
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d', '#ffc658', '#8dd1e1', '#a4de6c', '#d0ed57', '#a4c2f7'];
+
 
 /**
  * NavItem: ปุ่มเมนูหลักในแถบ Sidebar
@@ -67,8 +66,8 @@ const DashboardView = ({ stats, villageData, wasteTypeData, members }) => {
     const separationStats = useMemo(() => {
         // ระบบป้องกัน: ถ้ายังไม่มีข้อมูลสมาชิก ให้ค่าเป็น 0 ทั้งหมดก่อน
         if (!members) return [
-            { name: 'คัดแยกแล้ว', value: 0, color: '#10B981' },
-            { name: 'ยังไม่คัดแยก', value: 0, color: '#CBD5E1' }
+            { name: 'คัดแยกแล้ว', value: 0, color: '#16a34a' },
+            { name: 'ยังไม่คัดแยก', value: 0, color: '#ef4444' }
         ];
 
         // กรองหาจำนวนบ้านที่ทำเครื่องหมายว่าคัดแยกแล้ว (isSorted)
@@ -76,8 +75,8 @@ const DashboardView = ({ stats, villageData, wasteTypeData, members }) => {
         const notSortedCount = members.length - sortedCount;
 
         return [
-            { name: 'คัดแยกแล้ว', value: sortedCount, color: '#10B981' },
-            { name: 'ยังไม่คัดแยก', value: notSortedCount, color: '#CBD5E1' }
+            { name: 'คัดแยกแล้ว', value: sortedCount, color: '#16a34a' },
+            { name: 'ยังไม่คัดแยก', value: notSortedCount, color: '#ef4444' }
         ];
     }, [members]);
 
@@ -85,48 +84,67 @@ const DashboardView = ({ stats, villageData, wasteTypeData, members }) => {
         <div className="space-y-6">
             {/* ส่วนที่ 1: การแสดงผลสถิติ 5 กล่องด้านบน (สรุปตัวเลขสำคัญ) */}
             <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-                {stats.map((stat, i) => (
-                    <div key={i} className="modern-card flex flex-col gap-2 relative group cursor-default">
-                        <div className="flex items-center justify-between">
-                            <div className="p-3 bg-blue-50 rounded-2xl">{stat.icon}</div>
-                            {stat.hasTooltip && <Info size={16} className="text-slate-300 cursor-help" />}
+                {stats && stats.length > 0 ? (
+                    // ถ้ามีข้อมูลแล้ว ให้แสดงข้อมูลจริง
+                    stats.map((stat, i) => (
+                        <div key={i} className="modern-card flex flex-col gap-2 relative group cursor-default">
+                            <div className="flex items-center justify-between">
+                                <div className="p-3 bg-blue-50 rounded-2xl">{stat.icon}</div>
+                                {stat.hasTooltip && <Info size={16} className="text-slate-300 cursor-help" />}
+                            </div>
+                            <div>
+                                <p className="text-[13px] font-medium text-slate-500 mb-1">{stat.label}</p>
+                                <p className="text-xl font-bold text-slate-800 tracking-tight">{stat.value}</p>
+                            </div>
                         </div>
-                        <div>
-                            <p className="text-[13px] font-medium text-slate-500 mb-1">{stat.label}</p>
-                            <p className="text-xl font-bold text-slate-800 tracking-tight">{stat.value}</p>
+                    ))
+                ) : (
+                    // ถ้าข้อมูลยังมาไม่ถึง ให้แสดงกล่องเปล่าๆ 5 กล่องไว้จองพื้นที่
+                    [...Array(5)].map((_, i) => (
+                        <div key={i} className="modern-card h-[120px] animate-pulse bg-slate-50 border border-slate-100 flex flex-col justify-center items-center">
+                            <div className="w-10 h-10 bg-slate-200 rounded-2xl mb-2"></div>
+                            <div className="w-20 h-4 bg-slate-200 rounded-md"></div>
                         </div>
-                    </div>
-                ))}
+                    ))
+                )}
             </div>
 
-            {/* ส่วนที่ 2: กราฟวงกลม (Pie Chart) แสดงสัดส่วนการคัดแยกขยะของสมาชิกหมู่ 6 */}
+            {/* ส่วนที่ 2: กราฟวงกลม (Pie Chart) */}
             <div className="modern-card">
                 <h3 className="font-bold text-lg mb-6 text-slate-800 flex items-center gap-2">
                     <Leaf size={22} className="text-green-600" />
                     สัดส่วนสมาชิกที่คัดแยกขยะ (หมู่ 6)
                 </h3>
-                <div className="h-[400px] w-full">
 
-                    <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                            <Pie
-                                data={separationStats}
-                                innerRadius={100}
-                                outerRadius={140}
-                                paddingAngle={8}
-                                dataKey="value"
-                                label={({ name, value }) => `${name}: ${value} หลัง`}
-                            >
-                                {separationStats.map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={entry.color} />
-                                ))}
-                            </Pie>
-                            <RechartsTooltip
-                                contentStyle={{ borderRadius: '15px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
-                            />
-                            <Legend iconType="circle" layout="horizontal" verticalAlign="bottom" align="center" />
-                        </PieChart>
-                    </ResponsiveContainer>
+                <div className="h-[400px] min-h-[300px] w-full bg-slate-50 rounded-2xl flex items-center justify-center">
+                    {separationStats && separationStats.length > 0 ? (
+                        <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                                <Pie
+                                    data={separationStats}
+                                    innerRadius={100}
+                                    outerRadius={140}
+                                    paddingAngle={8}
+                                    dataKey="value"
+                                    label={({ name, value }) => `${name}: ${value} หลัง`}
+                                >
+                                    {separationStats.map((entry, index) => (
+                                        <Cell
+                                            key={`cell-${index}`}
+                                            fill={entry.name === 'ยังไม่คัดแยก' ? '#ef4444' : '#16a34a'} // สีแดง #ef4444 และเขียว #16a34a
+                                        />
+                                    ))}
+                                </Pie>
+                                <RechartsTooltip
+                                    contentStyle={{ borderRadius: '15px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
+                                />
+                                <Legend iconType="circle" layout="horizontal" verticalAlign="bottom" align="center" />
+                            </PieChart>
+                        </ResponsiveContainer>
+                    ) : (
+                        /* ส่วนนี้คือกล่องสีเทาที่จองที่ไว้รอข้อมูล ไม่ให้เว็บกระตุก */
+                        <p className="text-slate-400 font-medium">กำลังโหลดข้อมูล...</p>
+                    )}
                 </div>
 
                 {/* สรุปตัวเลขใต้กราฟวงกลม */}
@@ -135,85 +153,108 @@ const DashboardView = ({ stats, villageData, wasteTypeData, members }) => {
                         <p className="text-[15px] text-green-600 font-black uppercase mb-1">คัดแยกแล้ว</p>
                         <p className="text-2xl font-black text-green-700">{separationStats[0].value} <span className="text-sm font-normal">หลัง</span></p>
                     </div>
-                    <div className="p-4 bg-slate-50 rounded-2xl text-center border border-slate-100">
-                        <p className="text-[15px] text-slate-500 font-black uppercase mb-1">ยังไม่คัดแยก</p>
-                        <p className="text-2xl font-black text-slate-700">{separationStats[1].value} <span className="text-sm font-normal">หลัง</span></p>
+                    <div className="p-4 bg-red-50 rounded-2xl text-center border border-red-100">
+                        <p className="text-[15px] text-red-600 font-black uppercase mb-1">ยังไม่คัดแยก</p>
+                        <p className="text-2xl font-black text-red-700">{separationStats[1].value} <span className="text-sm font-normal">หลัง</span></p>
                     </div>
                 </div>
             </div>
 
             {/* ส่วนที่ 3: แถบอันดับหมวด (Leaderboard) เรียงตามเครดิตที่ทำได้สูงสุด */}
-            <div className="modern-card">
-                <h3 className="font-bold text-lg mb-4 text-slate-800">อันดับหมวดที่มีผลงานสูงสุด</h3>
-                <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
-                    {[...villageData].sort((a, b) => b.credit - a.credit).map((v, i) => (
-                        <div key={v.id} className="flex-shrink-0 w-40 bg-gradient-to-br from-blue-600 to-blue-800 p-4 rounded-2xl text-white shadow-lg">
-                            <span className="text-[10px] opacity-80 font-bold uppercase tracking-wider">อันดับที่ {i + 1}</span>
-                            <p className="text-lg font-bold mt-1">{v.name}</p>
-                            <p className="text-sm opacity-90">{v.credit.toLocaleString()} เครดิต</p>
-                        </div>
-                    ))}
+            <div className="modern-card relative group">
+                <div className="flex justify-between items-center mb-6">
+                    <h3 className="font-bold text-lg text-slate-800">อันดับหมวดผลงานสูงสุด</h3>
+                    {/* แอบมี Hint บอกว่าเลื่อนได้ (เห็นเฉพาะตอนเอาเมาส์มาวาง) */}
+                    <span className="text-xs text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                        Scroll เพื่อเลื่อน →
+                    </span>
+                </div>
+
+                {/* ใส่สไตล์ scrollbar-hide แต่เพิ่มการจัดวางให้ดูแน่นขึ้น */}
+                <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent hover:scrollbar-thumb-blue-400 transition-colors">
+                    {[...villageData]
+                        .sort((a, b) => b.credit - a.credit)
+                        .map((v, i) => (
+                            <div key={v.id}
+                                className="flex-shrink-0 w-40 bg-gradient-to-br from-blue-600 to-blue-800 p-5 rounded-3xl text-white shadow-xl hover:scale-[1.02] transition-transform duration-300"
+                            >
+                                <div className="flex justify-between items-start mb-3">
+                                    <span className="px-2 py-1 bg-white/20 rounded-lg text-[9px] font-bold uppercase tracking-wider">
+                                        Rank {i + 1}
+                                    </span>
+                                </div>
+                                <p className="text-[17px] font-bold leading-tight mt-1">{v.name}</p>
+                                <div className="mt-4 pt-4 border-t border-white/10">
+                                    <p className="text-[11px] opacity-70 uppercase font-medium">เครดิตรวม</p>
+                                    <p className="text-xl font-black">{v.credit.toLocaleString()}</p>
+                                </div>
+                            </div>
+                        ))}
                 </div>
             </div>
 
             {/* ส่วนที่ 4: กราฟแท่ง (Bar Chart) แสดงปริมาณน้ำหนักขยะแยกตามประเภท - แก้ไขระบบเฉดสีรายแท่ง ปลอดไฟแดง 100% */}
             <div className="modern-card">
                 <h3 className="font-bold text-lg mb-4 text-slate-800">ปริมาณขยะแยกตามประเภท (กิโลกรัม)</h3>
-                <div className="h-[300px] w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={wasteTypeData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <div className="h-[300px] min-h-[300px] w-full bg-slate-50/50 rounded-2xl flex items-center justify-center">
+                    {wasteTypeData && wasteTypeData.length > 0 ? (
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={wasteTypeData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                <defs>
+                                    <linearGradient id="grad-plastic" x1="0" y1="1" x2="0" y2="0">
+                                        <stop offset="0%" stopColor="#22c55e" stopOpacity={0.9} />
+                                        <stop offset="100%" stopColor="#86efac" stopOpacity={0.8} />
+                                    </linearGradient>
+                                    <linearGradient id="grad-paper" x1="0" y1="1" x2="0" y2="0">
+                                        <stop offset="0%" stopColor="#ea580c" stopOpacity={0.9} />
+                                        <stop offset="100%" stopColor="#ffedd5" stopOpacity={0.8} />
+                                    </linearGradient>
+                                    <linearGradient id="grad-glass" x1="0" y1="1" x2="0" y2="0">
+                                        <stop offset="0%" stopColor="#0284c7" stopOpacity={0.9} />
+                                        <stop offset="100%" stopColor="#7dd3fc" stopOpacity={0.8} />
+                                    </linearGradient>
+                                    <linearGradient id="grad-aluminum" x1="0" y1="1" x2="0" y2="0">
+                                        <stop offset="0%" stopColor="#a855f7" stopOpacity={0.9} />
+                                        <stop offset="100%" stopColor="#e9d5ff" stopOpacity={0.8} />
+                                    </linearGradient>
+                                    <linearGradient id="grad-alloy" x1="0" y1="1" x2="0" y2="0">
+                                        <stop offset="0%" stopColor="#64748b" stopOpacity={0.9} />
+                                        <stop offset="100%" stopColor="#cbd5e1" stopOpacity={0.8} />
+                                    </linearGradient>
+                                </defs>
+                                <CartesianGrid strokeDasharray="0 0" vertical={false} stroke="#f1f5f9" opacity={0.4} />
+                                <XAxis
+                                    dataKey="name"
+                                    axisLine={false}
+                                    tickLine={false}
+                                    tick={{ fill: '#94a3b8', fontSize: window.innerWidth < 640 ? 9 : 11 }} // ปรับ font เล็กลงในมือถือ
+                                    dy={10}
+                                    interval={0} // บังคับให้โชว์ทุกอัน
+                                />
+                                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11 }} />
+                                <RechartsTooltip cursor={{ fill: '#f8fafc', opacity: 0.4 }} contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.05)' }} />
 
-                            {/* Gradient แยกประจำสัญชาติขยะ ไล่สีในโทนของตัวเองจากโคนเข้มขึ้นไปยอดอ่อน */}
-                            <defs>
-                                <linearGradient id="grad-plastic" x1="0" y1="1" x2="0" y2="0">
-                                    <stop offset="0%" stopColor="#22c55e" stopOpacity={0.9} />
-                                    <stop offset="100%" stopColor="#86efac" stopOpacity={0.8} />
-                                </linearGradient>
-                                <linearGradient id="grad-paper" x1="0" y1="1" x2="0" y2="0">
-                                    <stop offset="0%" stopColor="#ea580c" stopOpacity={0.9} />
-                                    <stop offset="100%" stopColor="#ffedd5" stopOpacity={0.8} />
-                                </linearGradient>
-                                <linearGradient id="grad-glass" x1="0" y1="1" x2="0" y2="0">
-                                    <stop offset="0%" stopColor="#0284c7" stopOpacity={0.9} />
-                                    <stop offset="100%" stopColor="#7dd3fc" stopOpacity={0.8} />
-                                </linearGradient>
-                                <linearGradient id="grad-aluminum" x1="0" y1="1" x2="0" y2="0">
-                                    <stop offset="0%" stopColor="#a855f7" stopOpacity={0.9} />
-                                    <stop offset="100%" stopColor="#e9d5ff" stopOpacity={0.8} />
-                                </linearGradient>
-                                <linearGradient id="grad-alloy" x1="0" y1="1" x2="0" y2="0">
-                                    <stop offset="0%" stopColor="#64748b" stopOpacity={0.9} />
-                                    <stop offset="100%" stopColor="#cbd5e1" stopOpacity={0.8} />
-                                </linearGradient>
-                            </defs>
-
-                            <CartesianGrid strokeDasharray="0 0" vertical={false} stroke="#f1f5f9" opacity={0.4} />
-                            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11 }} dy={10} />
-                            <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11 }} />
-                            <RechartsTooltip cursor={{ fill: '#f8fafc', opacity: 0.4 }} contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.05)' }} />
-
-                            {/* แท่งสี่เหลี่ยมมุมโค้งมน */}
-                            <Bar dataKey="amount" barSize={28} radius={[6, 6, 0, 0]}>
-                                {
-                                    wasteTypeData.map((entry, index) => {
+                                <Bar dataKey="amount" maxBarSize={40} radius={[6, 6, 0, 0]} >
+                                    {wasteTypeData.map((entry, index) => {
                                         const colorGradients = [
-                                            'url(#grad-plastic)',   // แท่ง 1: พลาสติก (เขียว)
-                                            'url(#grad-paper)',     // แท่ง 2: กระดาษ (ส้ม)
-                                            'url(#grad-glass)',     // แท่ง 3: แก้ว (ฟ้า)
-                                            'url(#grad-aluminum)',  // แท่ง 4: อลูมิเนียม (ม่วง)
-                                            'url(#grad-alloy)'      // แท่ง 5: โลหะผสม (เทาเงิน)
+                                            'url(#grad-plastic)', 'url(#grad-paper)', 'url(#grad-glass)', 'url(#grad-aluminum)', 'url(#grad-alloy)'
                                         ];
                                         return <Cell key={`cell-${index}`} fill={colorGradients[index % colorGradients.length]} />;
-                                    })
-                                }
-                            </Bar>
-                        </BarChart>
-                    </ResponsiveContainer>
+                                    })}
+                                </Bar>
+                            </BarChart>
+                        </ResponsiveContainer>
+                    ) : (
+                        <div className="flex items-center justify-center h-full text-slate-400">
+                            กำลังโหลดข้อมูล...
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
     );
 };
+const MemoizedDashboardView = React.memo(DashboardView);
 // =========================================================================
 // หน้าจอราคารับซื้อขยะ + เครื่องคำนวณเงินจำลองสำหรับผู้ใช้ทั่วไป
 // =========================================================================
@@ -294,7 +335,7 @@ const PriceView = ({ isLoggedIn, isEditing, setIsEditing }) => {
                                 <button onClick={handleSavePrices} className="px-4 py-2 bg-green-600 text-white rounded-xl font-bold text-xs hover:bg-green-700 shadow-md transition">✅ บันทึกราคา</button>
                             </>
                         ) : (
-                            <button onClick={handleStartEdit} className="px-4 py-2 bg-blue-600 text-white rounded-xl font-bold text-xs hover:bg-blue-700 shadow-md transition flex items-center gap-1">🔧 แก้ไขราคา</button>
+                            <button onClick={handleStartEdit} className="px-4 py-2 bg-red-600 text-white rounded-xl font-bold text-xs hover:bg-blue-700 shadow-md transition flex items-center gap-1">🔧 แก้ไขราคา</button>
                         )}
                     </div>
                 )}
@@ -442,14 +483,14 @@ const MapView = ({ currentLocation, members, findMyLocation, onPinLocation, isLo
     }, [currentLocation, members]);
 
     return (
-        <div className="relative h-[600px] w-full rounded-3xl overflow-hidden border-4 border-white shadow-xl">
-            {/* กล่องสำหรับวาดแผนที่ (ID ต้องตรงกับที่เรียกใน L.map) */}
+        <div className="sticky top-20 z-40 h-[600px] w-full rounded-3xl overflow-hidden border-4 border-white shadow-xl">
+            {/* แผนที่ */}
             <div id="map-container" className="h-full w-full z-0"></div>
 
             {/* ปุ่มกด: ค้นหาตำแหน่งตัวเอง (GPS) */}
             <button
                 onClick={findMyLocation}
-                className="absolute top-4 right-4 z-[1000] bg-white p-4 rounded-2xl shadow-lg text-blue-600 active:scale-95 transition-all"
+                className="absolute top-6 right-6 z-[1000] bg-white p-4 rounded-2xl shadow-lg text-blue-600 active:scale-95 transition-all"
             >
                 <Navigation size={24} />
             </button>
@@ -466,6 +507,7 @@ const MapView = ({ currentLocation, members, findMyLocation, onPinLocation, isLo
         </div>
     );
 };
+
 // =========================================================================
 // ➕ [ขั้นตอนที่ 2: เพิ่มใหม่] คอมโพเนนต์หน้าต่างป๊อปอัพสำหรับแก้ไขข้อมูลสมาชิกและพิกัดหมุด (ระบบ Leaflet)
 // =========================================================================
@@ -1746,7 +1788,7 @@ const AddMemberModal = ({ initialLat, initialLng, villageData, onSave, onClose }
         villageId: villageData[0]?.id || 1,
         category: villageData[0]?.name || 'หมวดที่ 1',
         familyMembers: [''], // เก็บรายชื่อสมาชิกทุกคนในบ้าน
-        isSorted: false,     // สถานะการคัดแยก (สำหรับกราฟวงกลมในอนาคต)
+        isSorted: false,     // สถานะการคัดแยก 
         lat: initialLat,
         lng: initialLng,
         credit: 0,
@@ -2416,7 +2458,6 @@ const App = () => {
                 ...v,
                 members: vMembers.length,
                 credit: Math.max(0, memberCredits),
-                // ส่งค่านี้ไปใช้ในการ์ด
                 totalWaste: totalWasteInVillage,
                 wasteData: aggregatedWaste,
                 value: Math.max(0, memberCredits) > 0 ? Math.max(0, memberCredits) : 0.1
@@ -2448,7 +2489,7 @@ const App = () => {
     const renderContent = () => {
         switch (currentPage) {
             case 'dashboard':
-                return <DashboardView stats={stats} villageData={villageData} wasteTypeData={wasteTypeData} members={members} />;
+                return <MemoizedDashboardView stats={stats} villageData={villageData} wasteTypeData={wasteTypeData} members={members} />;
 
             case 'villages':
                 return <VillagesView villageData={villageData} setSelectedVillage={setSelectedVillage} setCurrentPage={setCurrentPage} isLoggedIn={isLoggedIn} setEditingVillage={setEditingVillage} />;
@@ -2518,7 +2559,7 @@ const App = () => {
                 );
 
             default:
-                return <DashboardView stats={stats} villageData={villageData} wasteTypeData={wasteTypeData} members={members} />;
+                return <MemoizedDashboardView stats={stats} villageData={villageData} wasteTypeData={wasteTypeData} members={members} />;
         }
     };
 
