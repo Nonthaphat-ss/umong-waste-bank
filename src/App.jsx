@@ -12,7 +12,7 @@ import {
 import {
     LayoutDashboard, Users, Map as MapIcon, History, LogIn,
     Database, FileSpreadsheet, MapPin, Navigation, Info, AlertTriangle,
-    Menu, X, ChevronRight, TrendingUp, Leaf, Wallet, PlusCircle
+    Menu, X, ChevronRight, TrendingUp, Leaf, Wallet, PlusCircle, ChevronDown
 } from 'lucide-react';
 import { db } from './firebase'; // อันนี้ตัวเดียวพอ!
 import {
@@ -64,13 +64,14 @@ const MobileNavItem = ({ active, onClick, label, icon }) => (
  * @param {Array} wasteTypeData - ข้อมูลน้ำหนักขยะแยกตามประเภทสำหรับกราฟแท่ง
  * @param {Array} members - ข้อมูลสมาชิกเพื่อนำมาคำนวณสัดส่วนการคัดแยก
  */
-const DashboardView = ({ stats, villageData, wasteTypeData, members }) => {
+const DashboardView = ({ stats, villageData, wasteTypeData, members, setCurrentPage }) => {
+    // 1. สัดส่วนการคัดแยกขยะ
     // ใช้ useMemo คำนวณสัดส่วนสมาชิกที่คัดแยกขยะแล้ว เทียบกับที่ยังไม่คัดแยก
     const separationStats = useMemo(() => {
         // ระบบป้องกัน: ถ้ายังไม่มีข้อมูลสมาชิก ให้ค่าเป็น 0 ทั้งหมดก่อน
         if (!members) return [
-            { name: 'คัดแยกแล้ว', value: 0, color: '#16a34a' },
-            { name: 'ยังไม่คัดแยก', value: 0, color: '#ef4444' }
+            { name: 'คัดแยกประเภทขยะแล้ว', value: 0, color: '#16a34a' },
+            { name: 'ยังไม่คัดแยกประเภทขยะ', value: 0, color: '#ef4444' }
         ];
 
         // กรองหาจำนวนบ้านที่ทำเครื่องหมายว่าคัดแยกแล้ว (isSorted)
@@ -78,8 +79,50 @@ const DashboardView = ({ stats, villageData, wasteTypeData, members }) => {
         const notSortedCount = members.length - sortedCount;
 
         return [
-            { name: 'คัดแยกแล้ว', value: sortedCount, color: '#16a34a' },
-            { name: 'ยังไม่คัดแยก', value: notSortedCount, color: '#ef4444' }
+            { name: 'คัดแยกประเภทขยะแล้ว', value: sortedCount, color: '#16a34a' },
+            { name: 'ยังไม่คัดแยกประเภทขยะ', value: notSortedCount, color: '#ef4444' }
+        ];
+    }, [members]);
+    // 2. สัดส่วนการเข้าร่วมโครงการ (วงกลม 2)
+    const participationStats = useMemo(() => {
+        const participatedCount = members ? members.length : 0;
+        const notParticipatedCount = 600; // ตั้งค่าเป้าหมายไว้ที่ 600 ก่อน
+        return [
+            { name: 'เข้าร่วมโครงการแล้ว', value: participatedCount, color: '#29c21bff' },
+            { name: 'ยังไม่ได้เข้าร่วม', value: notParticipatedCount, color: '#8e978fff' }
+        ];
+    }, [members]);
+
+    // 3. แนวโน้มการเติบโตของสมาชิก (ใช้ข้อมูลวันที่จริงจาก ID)
+    const trendData = useMemo(() => {
+        if (!members) return [];
+
+        const now = new Date();
+        const currentMonth = now.getMonth();
+        const currentYear = now.getFullYear();
+
+        let beforeThisMonthCount = 0; // ยอดสะสมจนถึงเดือนที่แล้ว
+
+        members.forEach(m => {
+            // ระบบจะเอา ID ที่เป็นตัวเลข (Date.now()) มาแปลงกลับเป็นวันที่
+            const joinDate = new Date(Number(m.id));
+
+            // เช็คว่าถ้าไม่ใช่เดือนนี้และปีนี้ แปลว่าเป็นคนเก่าของเดือนก่อนๆ
+            if (!isNaN(joinDate.getTime())) {
+                if (joinDate.getMonth() !== currentMonth || joinDate.getFullYear() !== currentYear) {
+                    beforeThisMonthCount++;
+                }
+            } else {
+                // ถ้าดึงวันที่ไม่ได้ (เช่น ID แบบเก่าที่เป็นตัวหนังสือ) ให้เหมาว่าเป็นคนเก่าไว้ก่อน
+                beforeThisMonthCount++;
+            }
+        });
+
+        // เดือนก่อนหน้า = คนที่มีอยู่ก่อนเดือนนี้ทั้งหมด
+        // เดือนนี้ = ยอดรวมทุกคนในระบบปัจจุบัน
+        return [
+            { name: 'เดือนก่อน', amount: beforeThisMonthCount, color: '#106e18ff' },
+            { name: 'เดือนนี้', amount: members.length, color: '#19ac19ff' }
         ];
     }, [members]);
 
@@ -88,7 +131,6 @@ const DashboardView = ({ stats, villageData, wasteTypeData, members }) => {
             {/* ส่วนที่ 1: การแสดงผลสถิติ 5 กล่องด้านบน (สรุปตัวเลขสำคัญ) */}
             <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
                 {stats && stats.length > 0 ? (
-                    // ถ้ามีข้อมูลแล้ว ให้แสดงข้อมูลจริง
                     stats.map((stat, i) => (
                         <div key={i} className="modern-card flex flex-col gap-2 relative group cursor-default">
                             <div className="flex items-center justify-between">
@@ -112,91 +154,175 @@ const DashboardView = ({ stats, villageData, wasteTypeData, members }) => {
                 )}
             </div>
 
-            {/* ส่วนที่ 2: กราฟวงกลม (Pie Chart) */}
-            <div className="modern-card">
-                <h3 className="font-bold text-lg mb-6 text-slate-800 flex items-center gap-2">
-                    <Leaf size={22} className="text-green-600" />
-                    สัดส่วนสมาชิกที่คัดแยกขยะ (หมู่ 6)
-                </h3>
+            {/* ── 🌟 ส่วนที่ 2: จัด Layout ใหม่ (ซ้าย 70% : ขวา 30%) ── */}
+            <div className="flex flex-col lg:flex-row gap-6">
 
-                <div className="h-[400px] min-h-[300px] w-full bg-slate-50 rounded-2xl flex items-center justify-center">
-                    {separationStats && separationStats.length > 0 ? (
-                        <ResponsiveContainer width="100%" height="100%">
-                            <PieChart>
-                                <Pie
-                                    data={separationStats}
-                                    innerRadius={100}
-                                    outerRadius={140}
-                                    paddingAngle={8}
-                                    dataKey="value"
-                                    label={({ name, value }) => `${name}: ${value} หลัง`}
-                                >
-                                    {separationStats.map((entry, index) => (
-                                        <Cell
-                                            key={`cell-${index}`}
-                                            fill={entry.name === 'ยังไม่คัดแยก' ? '#ef4444' : '#16a34a'} // สีแดง #ef4444 และเขียว #16a34a
-                                        />
-                                    ))}
-                                </Pie>
-                                <RechartsTooltip
-                                    contentStyle={{ borderRadius: '15px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
-                                />
-                                <Legend iconType="circle" layout="horizontal" verticalAlign="bottom" align="center" />
-                            </PieChart>
-                        </ResponsiveContainer>
-                    ) : (
-                        /* ส่วนนี้คือกล่องสีเทาที่จองที่ไว้รอข้อมูล ไม่ให้เว็บกระตุก */
-                        <p className="text-slate-400 font-medium">กำลังโหลดข้อมูล...</p>
-                    )}
-                </div>
+                {/* 📊 ฝั่งซ้าย (70%): กราฟวงกลม */}
+                <div className="lg:w-[70%] w-full">
+                    <div className="modern-card bg-white p-6 rounded-3xl border border-slate-100 shadow-sm h-full flex flex-col">
+                        <h3 className="font-bold text-lg mb-6 text-slate-800 flex items-center gap-2">
+                            <Leaf size={22} className="text-emerald-500" />
+                            สัดส่วนสมาชิกที่คัดแยกประเภทขยะ (หมู่ 6)
+                        </h3>
 
-                {/* สรุปตัวเลขใต้กราฟวงกลม */}
-                <div className="mt-6 grid grid-cols-2 gap-4">
-                    <div className="p-4 bg-green-50 rounded-2xl text-center border border-green-100">
-                        <p className="text-[15px] text-green-600 font-black uppercase mb-1">คัดแยกแล้ว</p>
-                        <p className="text-2xl font-black text-green-700">{separationStats[0].value} <span className="text-sm font-normal">หลัง</span></p>
-                    </div>
-                    <div className="p-4 bg-red-50 rounded-2xl text-center border border-red-100">
-                        <p className="text-[15px] text-red-600 font-black uppercase mb-1">ยังไม่คัดแยก</p>
-                        <p className="text-2xl font-black text-red-700">{separationStats[1].value} <span className="text-sm font-normal">หลัง</span></p>
-                    </div>
-                </div>
-            </div>
+                        <div className="h-[350px] w-full bg-slate-50/50 rounded-2xl flex items-center justify-center border border-slate-100 mb-6">
+                            {separationStats && separationStats.length > 0 ? (
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <PieChart>
+                                        <Pie
+                                            data={separationStats}
+                                            innerRadius={90}
+                                            outerRadius={130}
+                                            paddingAngle={8}
+                                            dataKey="value"
+                                            label={({ name, value }) => `${name}: ${value} หลัง`}
+                                        >
+                                            {separationStats.map((entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={entry.name === 'ยังไม่คัดแยกประเภทขยะ' ? '#ef4444' : '#10b981'} />
+                                            ))}
+                                        </Pie>
+                                        <RechartsTooltip contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }} />
+                                        <Legend iconType="circle" layout="horizontal" verticalAlign="bottom" align="center" />
+                                    </PieChart>
+                                </ResponsiveContainer>
+                            ) : (
+                                <p className="text-slate-400 font-medium">กำลังโหลดข้อมูล...</p>
+                            )}
+                        </div>
 
-            {/* ส่วนที่ 3: แถบอันดับหมวด (Leaderboard) เรียงตามเครดิตที่ทำได้สูงสุด */}
-            <div className="modern-card relative group">
-                <div className="flex justify-between items-center mb-6">
-                    <h3 className="font-bold text-lg text-slate-800">อันดับหมวดผลงานสูงสุด</h3>
-                    {/* แอบมี Hint บอกว่าเลื่อนได้ (เห็นเฉพาะตอนเอาเมาส์มาวาง) */}
-                    <span className="text-xs text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity">
-                        Scroll เพื่อเลื่อน →
-                    </span>
-                </div>
-
-                {/* ใส่สไตล์ scrollbar-hide แต่เพิ่มการจัดวางให้ดูแน่นขึ้น */}
-                <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent hover:scrollbar-thumb-blue-400 transition-colors">
-                    {[...villageData]
-                        .sort((a, b) => b.credit - a.credit)
-                        .map((v, i) => (
-                            <div key={v.id}
-                                className="flex-shrink-0 w-40 bg-gradient-to-br from-blue-600 to-blue-800 p-5 rounded-3xl text-white shadow-xl hover:scale-[1.02] transition-transform duration-300"
-                            >
-                                <div className="flex justify-between items-start mb-3">
-                                    <span className="px-2 py-1 bg-white/20 rounded-lg text-[9px] font-bold uppercase tracking-wider">
-                                        Rank {i + 1}
-                                    </span>
-                                </div>
-                                <p className="text-[17px] font-bold leading-tight mt-1">{v.name}</p>
-                                <div className="mt-4 pt-4 border-t border-white/10">
-                                    <p className="text-[11px] opacity-70 uppercase font-medium">เครดิตรวม</p>
-                                    <p className="text-xl font-black">{v.credit.toLocaleString()}</p>
-                                </div>
+                        {/* สรุปตัวเลขใต้กราฟวงกลม */}
+                        <div className="grid grid-cols-2 gap-4 mt-auto">
+                            <div className="p-4 bg-emerald-50/50 rounded-2xl text-center border border-emerald-100/50">
+                                <p className="text-[13px] text-emerald-600 font-bold mb-1">คัดแยกแล้ว</p>
+                                <p className="text-2xl font-black text-emerald-600">{separationStats[0].value} <span className="text-xs font-normal">หลัง</span></p>
                             </div>
-                        ))}
+                            <div className="p-4 bg-red-50/50 rounded-2xl text-center border border-red-100/50">
+                                <p className="text-[13px] text-red-600 font-bold mb-1">ยังไม่คัดแยก</p>
+                                <p className="text-2xl font-black text-red-600">{separationStats[1].value} <span className="text-xs font-normal">หลัง</span></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* 🏆 ฝั่งขวา (30%): อันดับหมวดสูงสุด (List Box) */}
+                <div className="lg:w-[30%] w-full">
+                    <div className="modern-card bg-white p-6 rounded-3xl border border-slate-100 shadow-sm h-full flex flex-col">
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="font-bold text-lg text-slate-800 flex items-center gap-2">
+                                🏆 อันดับหมวดที่มีคาร์บอนเครดิตสูงสุด
+                            </h3>
+                        </div>
+
+                        {/* List Box แนวตั้ง */}
+                        <div className="flex flex-col gap-3 overflow-y-auto max-h-[460px] pr-2 scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent">
+                            {[...villageData]
+                                .sort((a, b) => b.credit - a.credit)
+                                .map((v, i) => (
+                                    <div key={v.id} className="bg-slate-50 border border-slate-100 p-4 rounded-2xl flex items-center justify-between hover:bg-emerald-50 hover:border-emerald-100 transition-colors group">
+                                        <div className="flex items-center gap-3">
+                                            {/* เหรียญรางวัล */}
+                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-xs shrink-0
+                                                ${i === 0 ? 'bg-amber-100 text-amber-600 shadow-sm' :
+                                                    i === 1 ? 'bg-slate-200 text-slate-500' :
+                                                        i === 2 ? 'bg-orange-100 text-orange-600' :
+                                                            'bg-white border text-slate-400'}`}>
+                                                {i + 1}
+                                            </div>
+
+                                            {/* ชื่อหมู่บ้าน */}
+                                            <div className="flex flex-col">
+                                                <span className="font-bold text-sm text-slate-700 group-hover:text-emerald-700 transition-colors">{v.name}</span>
+                                            </div>
+                                        </div>
+
+                                        {/* เครดิต (ชิดขวา) */}
+                                        <div className="text-right flex flex-col items-end">
+                                            <span className="font-black text-blue-600 group-hover:text-emerald-600 font-mono text-sm">{v.credit.toLocaleString()}</span>
+                                            <span className="text-[9px] font-bold text-slate-400 uppercase">แต้ม</span>
+                                        </div>
+                                    </div>
+                                ))}
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+            {/* ── แถวที่ 3: กราฟเข้าร่วม (60%) + กราฟแท่งแนวนอนเปรียบเทียบ (40%) ── */}
+            <div className="flex flex-col lg:flex-row gap-6">
+
+                {/* กราฟเข้าร่วม 60% */}
+                <div className="lg:w-[60%] w-full">
+                    <div className="modern-card bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex flex-col h-full min-h-[350px]">
+                        <h3 className="font-bold text-lg mb-6 text-slate-800 flex items-center gap-2">
+                            <Users size={22} className="text-blue-500" /> การเข้าร่วมธนาคารขยะ
+                        </h3>
+                        <div className="h-[250px] w-full bg-slate-50/50 rounded-2xl flex items-center justify-center border border-slate-50 mb-6 flex-grow">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                    <Pie data={participationStats} innerRadius={65} outerRadius={95} paddingAngle={6} dataKey="value" label={({ value }) => `${value} หลัง`}>
+                                        {participationStats.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
+                                    </Pie>
+                                    <RechartsTooltip contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }} />
+                                    <Legend iconType="circle" layout="horizontal" verticalAlign="bottom" align="center" wrapperStyle={{ fontSize: '13px' }} />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+                </div>
+
+                {/* กราฟแนวนอนเปรียบเทียบ + ปุ่ม 40% */}
+                <div className="lg:w-[40%] w-full">
+                    <div className="modern-card bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex flex-col h-full min-h-[350px]">
+                        <div className="mb-4">
+                            <h3 className="font-bold text-lg text-slate-800 flex items-center gap-2">
+                                📈 แนวโน้มการเข้าร่วม
+                            </h3>
+                            <p className="text-xs text-slate-400 mt-1">เปรียบเทียบยอดสมาชิกเดือนนี้และเดือนก่อนหน้า</p>
+                        </div>
+
+                        {/* กราฟแท่งแนวนอน (Horizontal Bar Chart) */}
+                        <div className="h-[150px] w-full mb-6">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart layout="vertical" data={trendData} margin={{ top: 10, right: 30, left: -10, bottom: 0 }}>
+                                    <XAxis type="number" hide />
+                                    <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 13, fontWeight: 'bold' }} />
+                                    <RechartsTooltip cursor={{ fill: '#f8fafc' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                                    <Bar dataKey="amount" radius={[0, 8, 8, 0]} barSize={28} label={{ position: 'right', fill: '#475569', fontSize: 14, fontWeight: 'bold' }}>
+                                        {trendData.map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={entry.color} />
+                                        ))}
+                                    </Bar>
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
+
+                        {/* ปุ่ม Action กดทะลุไปหน้าข้อมูลสมาชิก */}
+                        {/* ปุ่ม Action โทนสีเขียว กดแล้ววาร์ปไปด้านบนของหน้าข้อมูลสมาชิก */}
+                        <div className="mt-auto">
+                            <button
+                                onClick={() => {
+                                    if (typeof setCurrentPage !== 'undefined') {
+                                        // 1. สั่งเปลี่ยนหน้าไปที่ข้อมูลสมาชิก
+                                        setCurrentPage('villages');
+
+                                        // 2. สั่งให้หน้าจอเด้งกลับไปบนสุดทันที (แบบสมูทๆ ไม่กระตุก)
+                                        window.scrollTo({
+                                            top: 0,
+                                            behavior: 'smooth' // ถ้าอยากให้เด้งขึ้นไปทันทีแบบไม่ต้องเลื่อน ให้แก้คำว่า 'smooth' เป็น 'auto' ได้ครับ
+                                        });
+                                    }
+                                }}
+                                className="w-full bg-emerald-50 hover:bg-emerald-600 text-emerald-600 hover:text-white border border-emerald-200 py-4 rounded-2xl font-bold flex items-center justify-center gap-2 transition-colors group shadow-sm"
+                            >
+                                <Users size={20} className="group-hover:scale-110 transition-transform" />
+                                เปิดดูข้อมูลสมาชิกทั้งหมด
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            {/* ส่วนที่ 4: กราฟแท่ง (Bar Chart) แสดงปริมาณน้ำหนักขยะแยกตามประเภท - แก้ไขระบบเฉดสีรายแท่ง ปลอดไฟแดง 100% */}
+            {/* ส่วนที่ 4: กราฟแท่ง (Bar Chart) แสดงปริมาณน้ำหนักขยะแยกตามประเภท */}
             <div className="modern-card">
                 <h3 className="font-bold text-lg mb-4 text-slate-800">ปริมาณขยะแยกตามประเภท (กิโลกรัม)</h3>
                 <div className="h-[300px] min-h-[300px] w-full bg-slate-50/50 rounded-2xl flex items-center justify-center">
@@ -626,13 +752,13 @@ const EditMemberModal = ({ member, villageData, onSave, onDelete, onClose }) => 
 
                     {/* 6. แก้ไขสถานะคัดแยกขยะ */}
                     <div className="flex justify-between items-center bg-slate-50 p-3 rounded-2xl border border-dashed">
-                        <span className="font-bold text-slate-700 text-sm">สถานะการคัดแยกขยะในครัวเรือน:</span>
+                        <span className="font-bold text-slate-700 text-sm">สถานะการคัดแยกประเภทขยะในครัวเรือน:</span>
                         <button
                             type="button"
                             onClick={() => setEditData({ ...editData, isSorted: !editData.isSorted })}
                             className={`px-4 py-2 rounded-full font-bold text-xs transition-all ${editData.isSorted ? 'bg-green-500 text-white shadow-md' : 'bg-slate-300 text-slate-600'}`}
                         >
-                            {editData.isSorted ? '✅ คัดแยกแล้ว' : '⚪ ยังไม่คัดแยก'}
+                            {editData.isSorted ? '✅ คัดแยกประเภทขยะแล้ว' : '⚪ ยังไม่คัดแยกประเภทขยะ'}
                         </button>
                     </div>
 
@@ -980,7 +1106,7 @@ const MembersView = ({ members, setMembers, villages, setVillages, isLoggedIn, l
                                             ? 'bg-green-100 text-green-600 border-green-200'
                                             : 'bg-slate-100 text-slate-400 border-slate-200'
                                             }`}>
-                                            {member.isSorted ? '✅ คัดแยกแล้ว' : '⚪ ยังไม่แยก'}
+                                            {member.isSorted ? '✅ คัดแยกประเภทขยะแล้ว' : '⚪ ยังไม่คัดแยกประเภทขยะ'}
                                         </span>
 
                                         {isLoggedIn && (
@@ -1494,7 +1620,7 @@ const VillagesView = ({ villageData, setSelectedVillage, setCurrentPage, isLogge
                         <div className="flex justify-between items-start mb-4">
                             <div>
                                 <h3 className="font-black text-2xl text-blue-900">{v.name}</h3>
-                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Zone: หมู่ 6 ต.อุโมงค์</p>
+                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest"> หมู่ 6 ต.อุโมงค์</p>
                             </div>
                             <div className="bg-emerald-50 text-emerald-600 text-[10px] px-3 py-1 rounded-full font-black flex items-center gap-1 border border-emerald-100">
                                 <Leaf size={10} /> ECO ACTIVE
@@ -1865,9 +1991,9 @@ const AddMemberModal = ({ initialLat, initialLng, villageData, onSave, onClose }
                     </div>
 
                     <div className="p-4 bg-slate-50 rounded-2xl flex items-center justify-between border border-dashed">
-                        <span className="font-bold text-slate-700 text-sm">สถานะการคัดแยกขยะ:</span>
+                        <span className="font-bold text-slate-700 text-sm">สถานะการคัดแยกประเภทขยะ:</span>
                         <button type="button" onClick={() => setNewMember({ ...newMember, isSorted: !newMember.isSorted })} className={`px-4 py-2 rounded-full font-bold text-xs transition-all ${newMember.isSorted ? 'bg-green-500 text-white shadow-md' : 'bg-slate-300 text-slate-600'}`}>
-                            {newMember.isSorted ? '✅ คัดแยกแล้ว' : '⚪ ยังไม่คัดแยก'}
+                            {newMember.isSorted ? '✅ คัดแยกประเภทขยะแล้ว' : '⚪ ยังไม่คัดแยกประเภทขยะ'}
                         </button>
                     </div>
                 </div>
@@ -2349,7 +2475,7 @@ const App = () => {
         return total;
     }, [villages]); // คำนวณใหม่เฉพาะเมื่อข้อมูลหมู่บ้าน (villages) เปลี่ยนแปลง
 
-    // --- 5. สรุปสถิติ 5 กล่องหลักสำหรับหน้า Dashboard ---
+    // --- 5. สรุปสถิติ 5 กล่องหลักสำหรับหน้า Dashboard 
     const stats = useMemo(() => {
         // 1. รวมขยะรวมจากสมาชิกทุกคน
         const totalWeight = allMembers.reduce((acc, m) => {
@@ -2362,17 +2488,17 @@ const App = () => {
                 acc[type] = (acc[type] || 0) + Number(weight);
             });
             return acc;
-        }, { 'พลาสติก': 0, 'กระดาษ': 0, 'แก้ว': 0, 'อลูมิเนียม': 0, 'โลหะผสม': 0 }); // <-- ปีกกาเดียวจบตรงนี้เลยครับ
+        }, { 'พลาสติก': 0, 'กระดาษ': 0, 'แก้ว': 0, 'อลูมิเนียม': 0, 'โลหะผสม': 0 });
 
         // หาตัวที่มากที่สุด
         const topType = Object.entries(typeTotals).sort((a, b) => b[1] - a[1])[0];
         const topLabel = topType && topType[1] > 0 ? topType[0] : 'รอดำเนินการ';
 
         return [
-            { label: 'ประเภทขยะมากที่สุด', value: topLabel, icon: <Database className="text-blue-500" /> },
-            { label: 'ขยะรวมทั้งระบบ', value: `${totalWeight.toLocaleString()} กก.`, icon: <TrendingUp className="text-blue-500" /> },
-            { label: 'เครดิตรวมทุกหมวด', value: allMembers.reduce((acc, m) => acc + (m.credit || 0), 0).toLocaleString(), icon: <Wallet className="text-blue-500" /> },
-            { label: 'จำนวนครัวเรือน', value: allMembers.length, icon: <Users className="text-blue-500" /> },
+            { label: 'ประเภทขยะมากที่สุด', value: topLabel, icon: <Database className="text-yellow-500" /> },
+            { label: 'ขยะรวมทั้งระบบ', value: `${totalWeight.toLocaleString()} กก.`, icon: <TrendingUp className="text-yellow-500" /> },
+            { label: 'เครดิตรวมทุกหมวด', value: allMembers.reduce((acc, m) => acc + (m.credit || 0), 0).toLocaleString(), icon: <Wallet className="text-yellow-500" /> },
+            { label: 'จำนวนครัวเรือน', value: allMembers.length, icon: <Users className="text-yellow-500" /> },
             {
                 label: 'ลดการปล่อยคาร์บอน',
                 value: `${carbonStats.toFixed(2)} kgCO2e`,
@@ -2439,7 +2565,7 @@ const App = () => {
     const renderContent = () => {
         switch (currentPage) {
             case 'dashboard':
-                return <MemoizedDashboardView stats={stats} villageData={villageData} wasteTypeData={wasteTypeData} members={allMembers} />;
+                return <MemoizedDashboardView stats={stats} villageData={villageData} wasteTypeData={wasteTypeData} members={allMembers} setCurrentPage={setCurrentPage} />;
 
             case 'villages':
                 return <VillagesView villageData={villageData} setSelectedVillage={setSelectedVillage} setCurrentPage={setCurrentPage} isLoggedIn={isLoggedIn} setEditingVillage={setEditingVillage} />;
@@ -2522,295 +2648,211 @@ const App = () => {
                 );
 
             default:
-                return <MemoizedDashboardView stats={stats} villageData={villageData} wasteTypeData={wasteTypeData} members={allMembers} />;
+                return <MemoizedDashboardView stats={stats} villageData={villageData} wasteTypeData={wasteTypeData} members={allMembers} setCurrentPage={setCurrentPage} />;
         }
     };
 
     return (
-        <div className="min-h-screen bg-slate-50 flex flex-col relative overflow-x-hidden select-none">
+        <div className="flex min-h-screen bg-[#f8fafc] font-sans text-slate-800">
 
-            {/* 🌌 🔮 [แผงแสงเหนือยิงลำแสงเฉียงแนวตั้ง - เวอร์ชันสว่างพาสเทลตามเรฟ] มุดเลเยอร์หลังสุด z-[-1] ปิดแท็กครบล็อก 100% */}
-            <div className="absolute top-0 left-0 right-0 h-[1100px] pointer-events-none z-[-1] overflow-hidden bg-slate-50">
+            {/* ── 🟢 1. แถบเมนูข้าง Sidebar (แสดงเฉพาะจอ Desktop เท่านั้น) ── */}
+            <aside className="hidden md:flex w-72 flex-col bg-gradient-to-b from-[#69c962] to-[#55b66c] p-6 shadow-xl shrink-0 select-none sticky top-0 h-screen overflow-y-auto">
 
-                {/* 🟣 ลำแสงเหนือเฉียงสีม่วงพาสเทล (ยิงเฉียงมาจากมุมขวาบนพาดลงมากลางเว็บสว่างๆ ตามเรฟ) */}
-                <div
-                    className="absolute bg-gradient-to-br from-purple-500/25 via-indigo-400/15 to-transparent blur-[80px]"
-                    style={{
-                        width: '160%',
-                        height: '700px',
-                        top: '-200px',
-                        right: '-30%',
-                        transform: 'rotate(-25deg)', /* หมุนองศาให้ลำแสงยิงตัดเฉียงทแยงมุมลงมาแนวตั้ง */
-                    }}
-                />
-
-                {/* 🔵 ลำแสงสปอตไลท์สีฟ้าใสสะท้อนแสง (Cyan Beam หนุนอยู่ชั้นล่างให้มิติดูคมชัดละมุนตา) */}
-                <div
-                    className="absolute bg-gradient-to-tr from-cyan-400/20 via-sky-300/10 to-transparent blur-[100px]"
-                    style={{
-                        width: '130%',
-                        height: '600px',
-                        top: '150px',
-                        right: '-10%',
-                        transform: 'rotate(-15deg)',
-                    }}
-                />
-
-                {/* ✨ ละอองดาวระยิบระยับจางๆ เพิ่มความกิ๊บเก๋ */}
-                <div className="absolute top-12 left-[15%] w-1.5 h-1.5 bg-indigo-400 rounded-full opacity-30 blur-[0.5px]" />
-                <div className="absolute top-36 left-[45%] w-1 h-1 bg-purple-400 rounded-full opacity-30" />
-                <div className="absolute top-24 right-[25%] w-1 h-1 bg-cyan-400 rounded-full opacity-40 blur-[0.5px]" />
-
-                {/* 🌫️ 🔧 [แก้จุดนี้จาก slate-950 เป็น slate-50] แผงเกลี่ยเฉดด้านล่างสุดให้สมูทกลืนไปกับพื้นหลังสีขาวนวลท้ายเว็บ */}
-                <div className="absolute bottom-0 left-0 right-0 h-[400px] bg-gradient-to-t from-slate-50 via-slate-50/80 to-transparent" />
-            </div>
-
-            {/* === 1. ส่วนหัวของเว็บไซต์ (Header) : เวอร์ชันขยายขนาดโลโก้และชื่อเว็บใหญ่ขึ้นบนจอคอม ไม่กระทบมือถือ === */}
-            <header className="bg-gradient-to-b from-sky-50 to-white border-b border-sky-100 sticky top-0 z-50 shadow-sm">
-
-                {/* ── แถวบนสุด: 💻 ปรับความสูงฝั่งคอมเป็น md:h-24 (ส่วนมือถือล็อกไว้ที่ h-16 เท่าเดิม) ── */}
-                <div className="bg-sky-900 text-white shadow-inner transition-all">
-                    <div className="max-w-7xl mx-auto px-4 h-16 md:h-24 flex items-center justify-between">
-
-                        {/*  (โลโก้ + ชื่อเว็บ) */}
-                        <div className="flex items-center gap-3 md:gap-4 cursor-pointer group" onClick={() => setCurrentPage('dashboard')}>
-                            {/* 💻 ปรับขนาดกล่องครอบโลโก้ฝั่งคอมให้กว้างขวางขึ้นด้วย md:p-1.5 */}
-                            <div className="bg-white p-0.5 md:p-1.5 rounded-xl shadow-sm transition-transform group-hover:scale-105">
-                                <img
-                                    src={webLogo}
-                                    alt="โลโก้ธนาคารขยะ"
-                                    className="w-10 h-10 md:w-14 md:h-14 object-contain rounded-lg"
-                                />
-                            </div>
-                            <div className="flex flex-col">
-                                {/* 🔤 ปรับตัวหนังสือชื่อเว็บฝั่งคอมให้ใหญ่ระดับ md:text-2xl เด่นชัดเจน */}
-                                <span className="font-black text-base sm:text-lg md:text-2xl tracking-tight text-white leading-tight">
-                                    ธนาคารขยะดิจิทัล
-                                </span>
-                                {/* 🔤 ปรับตัวหนังสือชื่อเทศบาลฝั่งคอมให้ขยายเป็น md:text-sm สีฟ้าอ่อนอ่านง่าย */}
-                                <span className="text-[11px] md:text-sm text-sky-200 font-bold tracking-wide mt-0.5">
-                                    เทศบาลตำบลอุโมงค์ ลำพูน (หมู่ 6)
-                                </span>
-                            </div>
-                        </div>
-
-                        {/* ฝั่งขวา: ระบบล็อกอินเจ้าหน้าที่ */}
-                        <div className="flex items-center gap-2 md:gap-3">
-                            {/* ปุ่มเมนูสำหรับเปิดบนมือถือ (จะแสดงเฉพาะจอเล็ก) */}
-                            <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="md:hidden p-2 text-sky-100 hover:bg-sky-800 rounded-lg transition">
-                                {isMenuOpen ? <X size={20} /> : <Menu size={20} />}
-                            </button>
-
-                            {!isLoggedIn ? (
-                                <button
-                                    onClick={() => setCurrentPage('admin')}
-                                    className="bg-sky-500/20 text-sky-100 hover:bg-sky-500 hover:text-white px-4 py-2 md:px-5 md:py-2.5 rounded-xl text-xs md:text-sm font-bold transition-all border border-sky-400/30 flex items-center gap-1.5 shadow-sm"
-                                >
-                                    <LogIn size={14} />
-                                    <span>เจ้าหน้าที่ระบบ</span>
-                                </button>
-                            ) : (
-                                <div className="flex items-center gap-3">
-                                    <div className="hidden sm:flex items-center gap-2 bg-emerald-500/20 text-emerald-300 px-3 py-1.5 md:px-4 md:py-2.5 rounded-full text-[11px] md:text-xs font-bold border border-emerald-500/30">
-                                        <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
-                                        STAFF ONLINE
-                                    </div>
-
-                                    <button
-                                        onClick={() => {
-                                            setIsLoggedIn(false);
-                                            setCurrentPage('dashboard');
-                                        }}
-                                        className="flex items-center gap-2 bg-red-500/10 text-red-300 hover:bg-red-600 hover:text-white px-4 py-2 md:px-5 md:py-2.5 rounded-xl text-xs md:text-sm font-bold transition-all border border-red-500/20 shadow-sm"
-                                    >
-                                        <LogIn size={14} className="rotate-180" />
-                                        <span>ออกจากระบบ</span>
-                                    </button>
-                                </div>
-                            )}
-                        </div>
+                {/* โลโก้และชื่อเว็บ (จัดเรียงใหม่ ปรับขนาดใหญ่ขึ้น และวางกึ่งกลาง) */}
+                <div className="flex flex-col items-center text-center gap-3 mb-6 cursor-pointer border-b border-white/30 pb-6 mt-2" onClick={() => { setCurrentPage('dashboard'); setIsMapLoaded(false); }}>
+                    <div className="bg-white p-2.5 rounded-2xl shadow-md">
+                        <img src={webLogo} alt="โลโก้" className="w-16 h-16 object-contain" />
+                    </div>
+                    <div className="flex flex-col text-white mt-1">
+                        <span className="font-black text-xl tracking-tight leading-tight drop-shadow-sm">ธนาคารขยะบ้านป่าลาน</span>
+                        <span className="text-sm text-green-100 font-bold opacity-90 drop-shadow-sm mt-1">เทศบาลตำบลอุโมงค์</span>
                     </div>
                 </div>
 
-                {/* ── แถวล่าง: แถบเมนูหลักขยายใหญ่ขึ้น (Desktop เท่านั้น บนมือถือจะซ่อนแถวนี้อัตโนมัติ) ── */}
-                <div className="bg-white/90 border-t border-sky-100/50 hidden md:block backdrop-blur-md">
-                    <div className="max-w-7xl mx-auto px-4 py-2.5 flex items-center justify-between">
+                {/* เมนูหลัก (ปรับฟอนต์ใหญ่ขึ้น + มีเส้นแบ่งขีดใต้บรรทัดชัดเจน) */}
+                <nav className="flex flex-col flex-grow w-full">
+                    <button
+                        onClick={() => { setCurrentPage('dashboard'); setIsMapLoaded(false); }}
+                        className={`w-full text-left px-4 py-4 text-base font-bold transition-all border-b border-white/30 ${currentPage === 'dashboard' ? 'bg-white text-emerald-700 shadow-md rounded-xl border-transparent' : 'text-white hover:bg-white/10 hover:rounded-xl'}`}>
+                        📊 ภาพรวมระบบ
+                    </button>
+                    <button
+                        onClick={() => { setCurrentPage('villages'); setIsMapLoaded(false); }}
+                        className={`w-full text-left px-4 py-4 text-base font-bold transition-all border-b border-white/30 ${currentPage === 'villages' ? 'bg-white text-emerald-700 shadow-md rounded-xl border-transparent' : 'text-white hover:bg-white/10 hover:rounded-xl'}`}>
+                        🏠 ข้อมูลสมาชิก
+                    </button>
+                    <button
+                        onClick={() => { setCurrentPage('prices'); setIsMapLoaded(false); }}
+                        className={`w-full text-left px-4 py-4 text-base font-bold transition-all border-b border-white/30 ${currentPage === 'prices' ? 'bg-white text-emerald-700 shadow-md rounded-xl border-transparent' : 'text-white hover:bg-white/10 hover:rounded-xl'}`}>
+                        🪙 ราคารับซื้อ
+                    </button>
+                    <button
+                        onClick={() => { setCurrentPage('map'); }}
+                        className={`w-full text-left px-4 py-4 text-base font-bold transition-all border-b border-white/30 ${currentPage === 'map' ? 'bg-white text-emerald-700 shadow-md rounded-xl border-transparent' : 'text-white hover:bg-white/10 hover:rounded-xl'}`}>
+                        🗺️ แผนที่ครัวเรือน
+                    </button>
 
-                        {/*  NavItem*/}
-                        <nav className="hidden md:flex gap-2 text-base font-extrabold [&_button]:py-2.5 [&_button]:px-5 [&_button]:rounded-xl [&_button]:transition-all">
-                            <NavItem active={currentPage === 'dashboard'} onClick={() => { setCurrentPage('dashboard'); setIsMapLoaded(false); }} label="📊 ภาพรวมระบบ" />
-                            <NavItem active={currentPage === 'villages'} onClick={() => { setCurrentPage('villages'); setIsMapLoaded(false); }} label="🏠 ข้อมูลสมาชิก" />
-                            <NavItem active={currentPage === 'prices'} onClick={() => { setCurrentPage('prices'); setIsMapLoaded(false); }} label="🪙 ราคารับซื้อ" />
-                            <NavItem active={currentPage === 'map'} onClick={() => setCurrentPage('map')} label="🗺️ แผนที่ครัวเรือน" />
+                    {/* ปุ่มจัดการแอดมิน */}
+                    {isLoggedIn && (
+                        <button
+                            onClick={() => { setCurrentPage('admin'); setIsMapLoaded(false); }}
+                            className={`w-full text-left px-4 py-4 text-base font-bold transition-all mt-6 rounded-xl border ${currentPage === 'admin' ? 'bg-amber-400 text-slate-900 shadow-md border-transparent' : 'border-white/40 text-white hover:bg-white/10 bg-black/10'}`}>
+                            🛠️ จัดการระบบแอดมิน
+                        </button>
+                    )}
+                </nav>
 
-                            {isLoggedIn && (
-                                <button
-                                    onClick={() => { setCurrentPage('admin'); setIsMapLoaded(false); }}
-                                    className={`px-5 py-2.5 rounded-xl text-base font-black transition-all ${currentPage === 'admin'
-                                        ? 'bg-sky-600 text-white shadow-md shadow-sky-200'
-                                        : 'bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100'
-                                        }`}
-                                >
-                                    <div className="flex items-center gap-2">
-                                        <LayoutDashboard size={18} />
-                                        จัดการระบบ
-                                    </div>
-                                </button>
-                            )}
-                        </nav>
+                {/* ข้อมูลแอดมิน */}
+                {isLoggedIn && currentUser && (
+                    <div className="pt-5 border-t border-white/30 text-white text-sm mt-4 text-center">
+                        <p className="opacity-70">ผู้ใช้งานปัจจุบัน:</p>
+                        <p className="font-black mt-1 text-amber-300 drop-shadow-sm">👤 {currentUser.name}</p>
                     </div>
-                </div>
-                {/* ── 📱 เมนูสำหรับหน้าจอมือถือ (Mobile Navigation) ── */}
+                )}
+            </aside>
+
+            {/* ── ⚪ 2. พื้นที่เนื้อหาหลักฝั่งขวา (Main Content) ── */}
+            <main className="flex-1 flex flex-col min-w-0 min-h-screen overflow-x-hidden">
+
+                {/* Header Desktop */}
+                <header className="hidden md:flex bg-white border-b border-slate-100 px-8 py-5 items-center justify-between sticky top-0 z-40 shadow-sm">
+                    <h2 className="text-xl font-black text-slate-800 uppercase tracking-tight">
+                        {currentPage === 'dashboard' && '📊 ภาพรวมระบบและสถิติ'}
+                        {currentPage === 'villages' && '🏠 ทะเบียนข้อมูลสมาชิกแต่ละหมวด'}
+                        {currentPage === 'prices' && '🪙 ตารางราคารับซื้อขยะประจำเดือน'}
+                        {currentPage === 'map' && '🗺️ ระบบแผนที่ครัวเรือนระบบสารสนเทศ'}
+                        {currentPage === 'admin' && '🛠️ แผงควบคุมระบบจัดการแอดมิน'}
+                        {currentPage === 'members' && '👥 ทะเบียนรายชื่อสมาชิกระบบ'}
+                        {currentPage === 'history' && '📋 ทะเบียนสรุปแต้มเครดิตรายครัวเรือน'}
+                        {currentPage === 'admin_logs' && '📜 ประวัติกิจกรรมการทำงานของเจ้าหน้าที่'}
+                    </h2>
+                    <div>
+                        {!isLoggedIn ? (
+                            <button onClick={() => setCurrentPage('admin')} className="bg-slate-50 border border-slate-200 hover:bg-slate-100 text-slate-700 px-5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm"><LogIn size={14} /> <span>เข้าสู่ระบบ</span></button>
+                        ) : (
+                            <button onClick={() => { setIsLoggedIn(false); setCurrentPage('dashboard'); }} className="bg-red-50 hover:bg-red-100 text-red-600 px-5 py-2.5 rounded-xl text-xs font-bold transition-all border border-red-100 flex items-center gap-1.5 shadow-sm"><LogIn size={14} className="rotate-180" /> <span>ออกจากระบบ</span></button>
+                        )}
+                    </div>
+                </header>
+
+                {/* Header Mobile */}
+                <header className="md:hidden bg-emerald-900 sticky top-0 z-50 shadow-sm">
+                    <div className="px-4 h-16 flex items-center justify-between">
+                        <div className="flex items-center gap-3 cursor-pointer" onClick={() => { setCurrentPage('dashboard'); setIsMenuOpen(false); }}>
+                            <img src={webLogo} alt="โลโก้" className="w-8 h-8 object-contain bg-white rounded-lg p-0.5" />
+                            <span className="font-black text-sm text-white tracking-tight">ธนาคารขยะบ้านป่าลาน</span>
+                        </div>
+                        <button onClick={() => { if (isLoggedIn) { setIsLoggedIn(false); setCurrentPage('dashboard'); } else { setCurrentPage('admin'); } }} className="bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded-xl text-xs font-bold border border-white/20 transition-colors">
+                            {isLoggedIn ? 'ออกจากระบบ' : 'เข้าสู่ระบบ'}
+                        </button>
+                    </div>
+                    <div onClick={() => setIsMenuOpen(!isMenuOpen)} className="bg-emerald-950 text-white px-4 py-3.5 flex items-center justify-between border-t border-emerald-800 cursor-pointer active:bg-emerald-900 transition-colors select-none">
+                        <div className="flex items-center gap-2 font-black text-xs tracking-wide">
+                            <Menu size={16} className="text-emerald-400" />
+                            <span>เมนูตัวเลือกระบบ</span>
+                        </div>
+                        <div className={`transition-transform duration-300 ${isMenuOpen ? 'rotate-180' : 'rotate-0'}`}>
+                            <ChevronDown size={16} className="text-emerald-400" />
+                        </div>
+                    </div>
+                </header>
+
+                {/* Mobile Menu Dropdown */}
                 {isMenuOpen && (
-                    <div className="md:hidden bg-white border-t border-sky-100/70 p-3 flex flex-col gap-1 shadow-lg animate-fadeIn">
-                        <MobileNavItem active={currentPage === 'dashboard'} onClick={() => { setCurrentPage('dashboard'); setIsMapLoaded(false); setIsMenuOpen(false); }} label="📊 ภาพรวมระบบ" icon={<LayoutDashboard size={18} />} />
-                        <MobileNavItem active={currentPage === 'villages'} onClick={() => { setCurrentPage('villages'); setIsMapLoaded(false); setIsMenuOpen(false); }} label="🏠 ข้อมูลหมู่บ้าน" icon={<Users size={18} />} />
-                        <MobileNavItem active={currentPage === 'prices'} onClick={() => { setCurrentPage('prices'); setIsMapLoaded(false); setIsMenuOpen(false); }} label="🪙 ราคารับซื้อ" icon={<Wallet size={18} />} />
-                        <MobileNavItem active={currentPage === 'map'} onClick={() => { setCurrentPage('map'); setIsMenuOpen(false); }} label="🗺️ แผนที่ครัวเรือน" icon={<MapIcon size={18} />} />
-
+                    <div className="md:hidden bg-white border-b border-slate-200 p-4 flex flex-col gap-1.5 shadow-xl animate-fadeIn sticky top-[105px] z-40">
+                        <MobileNavItem active={currentPage === 'dashboard'} onClick={() => { setCurrentPage('dashboard'); setIsMapLoaded(false); setIsMenuOpen(false); }} label="📊 ภาพรวมระบบ" icon={<LayoutDashboard size={20} />} />
+                        <MobileNavItem active={currentPage === 'villages'} onClick={() => { setCurrentPage('villages'); setIsMapLoaded(false); setIsMenuOpen(false); }} label="🏠 ข้อมูลสมาชิก" icon={<Users size={20} />} />
+                        <MobileNavItem active={currentPage === 'prices'} onClick={() => { setCurrentPage('prices'); setIsMapLoaded(false); setIsMenuOpen(false); }} label="🪙 ราคารับซื้อ" icon={<Wallet size={20} />} />
+                        <MobileNavItem active={currentPage === 'map'} onClick={() => { setCurrentPage('map'); setIsMenuOpen(false); }} label="🗺️ แผนที่ครัวเรือน" icon={<MapIcon size={20} />} />
                         {isLoggedIn && (
-                            <button
-                                onClick={() => { setCurrentPage('admin'); setIsMapLoaded(false); setIsMenuOpen(false); }}
-                                className="flex items-center gap-3 p-3 rounded-xl text-sm font-black mt-1.5 transition-all bg-amber-50 text-amber-700 border border-amber-200/60"
-                            >
-                                <LayoutDashboard size={18} />
-                                <span>🛠️ แผงควบคุมแอดมิน</span>
+                            <button onClick={() => { setCurrentPage('admin'); setIsMapLoaded(false); setIsMenuOpen(false); }} className="flex items-center gap-3 p-3 rounded-xl text-sm font-black mt-1 bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 transition-colors">
+                                <LayoutDashboard size={20} /> <span>🛠️ จัดการระบบแอดมิน</span>
                             </button>
                         )}
                     </div>
                 )}
-            </header>
-            {/* === 5. ส่วนเนื้อหาหลัก (Main Content Area) === */}
-            {/* จุดนี้คือหัวใจสำคัญ เพราะจะดึงหน้าจอจาก renderContent() มาแสดงผลตามเมนูที่เลือก */}
-            <main className="flex-grow max-w-7xl mx-auto w-full p-4">
-                {renderContent()}
+
+                {/* ── 📦 3. ส่วนเนื้อหา (แสดงกราฟ ตาราง สถิติ) ── */}
+                <div className="flex-grow p-4 md:p-8 max-w-[1600px] w-full mx-auto">
+                    {renderContent()}
+                </div>
+
+                {/* ── Footer ── */}
+                <footer className="bg-white border-t border-slate-100 py-6 mt-auto">
+                    <div className="max-w-7xl mx-auto px-4 text-center text-slate-500 text-sm">
+                        <div className="flex flex-wrap justify-center gap-3 mb-3">
+                            <span className="font-bold text-slate-400 flex items-center">📊 สถิติผู้เข้าชม:</span>
+                            <span className="font-mono bg-slate-50 border border-slate-100 px-3 py-1 rounded-lg text-slate-600 font-bold shadow-sm">วันนี้: {(visitorStats?.today || 0).toLocaleString()}</span>
+                            <span className="font-mono bg-slate-50 border border-slate-100 px-3 py-1 rounded-lg text-slate-600 font-bold shadow-sm">เดือนนี้: {(visitorStats?.month || 0).toLocaleString()}</span>
+                            <span className="font-mono bg-emerald-50 border border-emerald-100 px-3 py-1 rounded-lg font-black text-emerald-600 shadow-sm">รวมทั้งหมด: {(visitorStats?.total || 0).toLocaleString()} รอบ</span>
+                        </div>
+                        <p className="font-medium">© 2026 กองสาธารณสุขและสิ่งแวดล้อมเทศบาลตำบลอุโมงค์</p>
+                    </div>
+                </footer>
+
             </main>
 
-            {/* === 6. หน้าต่างแจ้งเตือนข้อมูล (Validation Modal) === */}
-            {/* จะเด้งขึ้นมาเมื่อแอดมินกรอกตัวเลขขยะที่ดูเยอะเกินปกติ เพื่อป้องกันการกรอกผิด */}
+            {/* ── 🚨 4. แจ้งเตือนและป๊อปอัพ (Modals) ── */}
             {showValidationAlert && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4">
-                    <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl">
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4 backdrop-blur-sm">
+                    <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border text-slate-700 animate-in zoom-in">
                         <div className="flex items-center gap-3 text-amber-600 mb-4">
                             <AlertTriangle size={32} />
                             <h3 className="font-bold text-xl">แจ้งเตือนข้อมูลผิดปกติ</h3>
                         </div>
-                        <p className="text-slate-600 mb-6">น้ำหนักที่ระบุ (5000 กก.) สูงกว่าค่าเฉลี่ยปกติ กรุณาตรวจสอบเลขศูนย์หรือหน่วยวัดอีกครั้ง</p>
+                        <p className="text-slate-600 mb-6 text-sm font-medium">น้ำหนักที่ระบุ (5000 กก.) สูงกว่าค่าเฉลี่ยปกติ กรุณาตรวจสอบเลขศูนย์หรือหน่วยวัดอีกครั้ง</p>
                         <div className="flex gap-2">
-                            <button onClick={() => setShowValidationAlert(false)} className="flex-1 py-2 border rounded-xl font-medium">แก้ไข</button>
-                            <button onClick={() => setShowValidationAlert(false)} className="flex-1 py-2 bg-blue-600 text-white rounded-xl font-medium">ยืนยันค่านี้</button>
+                            <button onClick={() => setShowValidationAlert(false)} className="flex-1 py-2.5 border border-slate-200 hover:bg-slate-50 rounded-xl font-bold text-sm transition-colors">แก้ไข</button>
+                            <button onClick={() => setShowValidationAlert(false)} className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm shadow-md transition-colors">ยืนยันค่านี้</button>
                         </div>
                     </div>
                 </div>
             )}
 
-            {/* === 7. ส่วนท้ายของเว็บไซต์ (Footer) === */}
-            <footer className="bg-white border-t py-6 mt-10">
-                <div className="max-w-7xl mx-auto px-4 text-center text-slate-500 text-sm">
-                    {/* 🔄 [แก้ไขตัวเลขจริง]: เปลี่ยนจากค่าตัวเลขล็อกตายตัว (Mock-up) มาดึงค่าสถิติการใช้งานจริงในเครื่อง */}
-                    <div className="flex flex-wrap justify-center gap-4 mb-2">
-                        <span>📊 สถิติผู้เข้าชมเว็บไซต์จริง:</span>
-                        <span className="font-mono bg-slate-100 px-2.5 py-0.5 rounded-lg text-slate-600 font-bold">
-                            วันนี้: {(visitorStats?.today || 0).toLocaleString()}
-                        </span>
-                        <span className="font-mono bg-slate-100 px-2.5 py-0.5 rounded-lg text-slate-600 font-bold">
-                            เดือนนี้: {(visitorStats?.month || 0).toLocaleString()}
-                        </span>
-                        <span className="font-mono bg-blue-50 border border-blue-100 px-2.5 py-0.5 rounded-lg font-black text-blue-600 shadow-sm">
-                            รวมทั้งหมด: {(visitorStats?.total || 0).toLocaleString()} รอบ
-                        </span>
-                    </div>
-                    <p>© 2026 กองสาธารณสุขและสิ่งแวดล้อมเทศบาลตำบลอุโมงค์</p>
-                </div>
-            </footer>
-
-            {/* === 8. กลุ่มหน้าต่างจัดการข้อมูล (Modals) === */}
-            {/* หน้าต่างนี้จะเด้งขึ้นมาตามเงื่อนไขการกดของแอดมิน */}
-
-            {/* ก. หน้าต่างแก้ไขข้อมูลขยะในแต่ละหมวด */}
             {editingVillage && (
-                <EditVillageModal
-                    village={editingVillage}
-                    members={members}
-                    onClose={() => setEditingVillage(null)}
-                    onSave={handleUpdateVillage}
-                    onDeleteMember={handleDeleteMember}
-                />
+                <EditVillageModal village={editingVillage} members={allMembers} onClose={() => setEditingVillage(null)} onSave={handleUpdateVillage} onDeleteMember={handleDeleteMember} />
             )}
 
-            {/* ข. หน้าต่างลงทะเบียนสมาชิกใหม่ (ปักหมุดบ้าน) */}
             {isAddMemberOpen && tempLocation && (
                 <AddMemberModal
-                    initialLat={tempLocation.lat}
-                    initialLng={tempLocation.lng}
-                    villageData={villages}
+                    initialLat={tempLocation.lat} initialLng={tempLocation.lng} villageData={villages}
                     onSave={async (newMemberData) => {
-                        const dataToSave = {
-                            ...newMemberData,
-                            villageId: Number(newMemberData.villageId)
-                        };
-                        try {
-                            await setDoc(doc(db, "members", String(newMemberData.id)), newMemberData);
-                            console.log("บันทึกสมาชิกใหม่ ");
-                        } catch (error) {
-                            console.error("บันทึกผิดพลาด:", error);
-                            alert("บันทึกเข้าฐานข้อมูลไม่สำเร็จ!");
-                            return;
-                        }
+                        const dataToSave = { ...newMemberData, villageId: Number(newMemberData.villageId) };
+                        try { await setDoc(doc(db, "members", String(newMemberData.id)), newMemberData); }
+                        catch (error) { alert("บันทึกเข้าฐานข้อมูลไม่สำเร็จ!"); return; }
                         logAdminAction(`ได้ลงทะเบียนและปักหมุดสมาชิกใหม่ "บ้านเลขที่ ${newMemberData.houseNo}" เข้าสู่หมวดระบบ`);
                         setMembers(prev => {
                             const nextMembers = [...prev, newMemberData];
                             localStorage.setItem('local_members_data', JSON.stringify(nextMembers));
                             return nextMembers;
                         });
-
-                        // 2. ➕ [ส่วนที่เพิ่มใหม่]: นำน้ำหนักขยะที่แอดมินกรอกตั้งต้นมาในหน้าต่าง ไปบวกสะสมรวมเข้ากับ 'หมวด' ที่เลือกไว้
                         setVillages(prevVillages => {
                             const updatedVillages = prevVillages.map(v => {
-                                // หาหมวดที่ตรงกับที่บ้านหลังนี้เลือกสังกัดไว้
                                 if (v.id === newMemberData.villageId) {
                                     const nextWasteData = { ...v.wasteData };
-
-                                    // วนลูปนำน้ำหนักขยะคัดแยกแต่ละประเภทที่ได้จากหน้าฟอร์ม ไปบวกเพิ่มเข้าสะสมในยอดรวมของหมวดนั้นๆ
                                     Object.keys(newMemberData.wasteData).forEach(type => {
                                         nextWasteData[type] = (Number(nextWasteData[type]) || 0) + (Number(newMemberData.wasteData[type]) || 0);
                                     });
-
                                     return { ...v, wasteData: nextWasteData };
                                 }
                                 return v;
                             });
-                            // สั่งเซฟจำลงหน่วยความจำเครื่องทันทีเพื่อความปลอดภัย ข้อมูลจะได้ไม่หายเวลาปิดหน้าต่างหรือรีเฟรชหน้าเว็บ
                             localStorage.setItem('village_data', JSON.stringify(updatedVillages));
                             return updatedVillages;
                         });
-
-                        // 3. สั่งปิดหน้าต่างลงทะเบียน และรีเซ็ตค่าตำแหน่งชั่วคราวทิ้ง (คงเดิมของคุณไว้)
-                        setIsAddMemberOpen(false);
-                        setTempLocation(null);
-                        alert("📍 ลงทะเบียนสมาชิกครัวเรือนใหม่ และคำนวณยอดน้ำหนักรวมเข้าสู่หมวดสะสมสำเร็จ!");
+                        setIsAddMemberOpen(false); setTempLocation(null); alert("📍 ลงทะเบียนสมาชิกครัวเรือนใหม่สำเร็จ!");
                     }}
-                    onClose={() => {
-                        setIsAddMemberOpen(false);
-                        setTempLocation(null);
-                    }}
+                    onClose={() => { setIsAddMemberOpen(false); setTempLocation(null); }}
                 />
             )}
 
-            {/* ค. หน้าต่างแสดงรายละเอียดเชิงลึกของแต่ละหมวด */}
             {selectedVillage && (
                 <VillageDetailsModal
-                    // ใช้ key เพื่อบังคับให้ Modal รีเฟรชข้อมูลใหม่ทุกครั้งที่ค่าใน wasteData เปลี่ยน
                     key={selectedVillage.id + JSON.stringify(selectedVillage.wasteData)}
-                    village={selectedVillage}
-                    onClose={() => setSelectedVillage(null)}
-                    villages={villages}
-                    members={members}
+                    village={selectedVillage} onClose={() => setSelectedVillage(null)} villages={villages} members={members}
                 />
             )}
-
         </div>
-
     );
 };
 export default App;

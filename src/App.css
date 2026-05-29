@@ -9,6 +9,11 @@
     --bg-body: #f8fafc;
 }
 
+html {
+    /* ค่าเริ่มต้นคือ 100% (ประมาณ 16px) */
+    font-size: 110% !important;
+}
+
 /* ตั้งค่าฟอนต์ทั้งระบบ */
 * {
     font-family: 'Anuphan', sans-serif !important;
@@ -16,43 +21,62 @@
 }
 
 body {
-    background-color: var(--bg-body);
+    /*background-color: var(--bg-body);*/
     color: var(--text-main);
     margin: 0;
 }
 
-/* ตกแต่ง Card Dashboard ให้ดูโมเดิร์น */
 .modern-card {
-    background: white;
+    background: #fcfcfc;
+    /* สีขาวนวล */
     border-radius: 24px;
-    /* โค้งมนมากขึ้น */
-    border: 1px solid rgba(226, 232, 240, 0.5);
-    box-shadow: 0 4px 15px -3px rgba(0, 0, 0, 0.05);
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    /* ขอบจางๆ */
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
     padding: 1.5rem;
+
+    /* บังคับสีตัวอักษรให้เป็นเทาเข้มเสมอ */
+    color: #334155 !important;
+}
+
+/* บังคับให้หัวข้อภายใน modern-card เข้มด้วย */
+.modern-card h3,
+.modern-card p,
+.modern-card span {
+    color: #334155 !important;
 }
 
 .modern-card:hover {
     transform: translateY(-5px);
-    box-shadow: 0 12px 25px -5px rgba(0, 0, 0, 0.08);
-    border-color: rgba(37, 99, 235, 0.2);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
 }
 
 /* ปรับแต่งปุ่ม Nav */
+.nav-item {
+    font-size: 1.1rem !important;
+    /* ฟอนต์ใหญ่ขึ้น */
+    padding: 0.75rem 1.5rem !important;
+    /* ปุ่มใหญ่ขึ้น */
+    color: #475569 !important;
+}
+
+.nav-item:hover {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+    color: #16a34a !important;
+    /* เปลี่ยนสีตอน Hover เป็นสีเขียว */
+}
+
 .nav-item-active {
-    color: var(--primary-blue);
-    font-weight: 600;
+    color: #16a34a !important;
+    /* สีตอน Active */
+    font-weight: 800 !important;
     position: relative;
 }
 
 .nav-item-active::after {
-    content: '';
-    position: absolute;
-    bottom: -4px;
-    left: 0;
-    width: 100%;
-    height: 3px;
-    background: var(--primary-blue);
-    border-radius: 10px;
+    background: #16a34a !important;
+    /* เส้นใต้สีเขียว */
+    height: 4px;
 }
 
 /* ส่วนหัวข้อหมู่บ้านในสรุป */
@@ -75,4 +99,34 @@ body {
     color: #475569 !important;
     /* สีเทาเข้มกำลังดี */
     margin-left: 4px;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    /* ไล่เฉดให้ลึกขึ้น ให้ดูมีมิติเหมือนงานดีไซน์คุณภาพสูง */
+    background: radial-gradient(circle at top left, #22c55e, #16a34a, #064e3b);
+    min-height: 100vh;
+    background-attachment: fixed;
+}
+
+/* เพิ่ม Grain จางๆ ที่ไม่กวนตา */
+body::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0.05;
+    /* จางมาก */
+    pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+}
+
+.apple-header {
+    /* เปลี่ยนจากใสๆ เป็นเขียวเข้มแบบกระจกฝ้า (Semi-Opaque) */
+    background: rgba(6, 78, 59, 0.85) !important;
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }

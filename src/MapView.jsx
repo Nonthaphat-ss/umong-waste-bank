@@ -9,62 +9,78 @@ const MapView = ({ currentLocation, members, findMyLocation, onPinLocation, isLo
     const clusterGroupRef = useRef(null);
     const myMarkerRef = useRef(null);
     const [filterId, setFilterId] = useState('all');
+    const [isMapReady, setIsMapReady] = useState(false); // 👈 เพิ่มสถานะนี้เพื่อคุมการวาดหมุด
 
     const displayedMembers = useMemo(() => {
         if (filterId === 'all') return members;
         return members.filter(m => String(m.villageId) === String(filterId));
     }, [members, filterId]);
 
-    // 1. Initial Map Setup (สร้างแมพครั้งเดียว)
+    // 1. Setup Map
     useEffect(() => {
         const L = window.L;
-        if (!L || mapRef.current) return;
+        if (!L || mapRef.current || currentLocation.lat === 0) return;
 
         mapRef.current = L.map('map-container', {
             maxBounds: [[17.5, 98.6], [18.8, 99.3]],
-            maxBoundsViscosity: 1.0
+            maxBoundsViscosity: 1.0,
+            minZoom: 10
         }).setView([currentLocation.lat, currentLocation.lng], 16);
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mapRef.current);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19, keepBuffer: 2
+        }).addTo(mapRef.current);
+
+        // ให้เวลาแมพโหลดขนาดเสร็จแล้วค่อยบอกว่าพร้อม
+        setTimeout(() => {
+            mapRef.current.invalidateSize();
+            setIsMapReady(true); // 👈 พอแมพพร้อมแล้ว ค่อยให้ useEffect ตัวอื่นทำงาน
+        }, 500);
     }, []);
 
-    // 2. วาดหมุดสมาชิก (เฉพาะตอนเปลี่ยน Filter)
+    // 2. วาดหมุดสมาชิก (รอให้ isMapReady เป็น true)
     useEffect(() => {
-        const L = window.L;
-        if (!L || !mapRef.current) return;
+        if (!isMapReady || !mapRef.current || currentLocation.lat === 0) return;
 
-        if (clusterGroupRef.current) clusterGroupRef.current.clearLayers();
-        else clusterGroupRef.current = L.markerClusterGroup({ chunkedLoading: true });
+        console.log("กำลังวาดหมุดสมาชิก จำนวน:", displayedMembers.length);
+
+        if (!clusterGroupRef.current) {
+            clusterGroupRef.current = L.markerClusterGroup({ chunkedLoading: true });
+            mapRef.current.addLayer(clusterGroupRef.current);
+        }
+        clusterGroupRef.current.clearLayers();
 
         displayedMembers.filter(m => m.lat && m.lng).forEach(m => {
-            const popupContent = `
-                <div style="font-family: sans-serif; text-align: left;">
-                    <h4 style="margin:0; color:#1e3a8a;">🏠 บ้านเลขที่ ${m.houseNo}</h4>
-                    <p style="margin:2px 0;">หมวด: ${m.category || 'ไม่ระบุ'}</p>
-                    <b style="color:#d97706;">🪙 เครดิต: ${(m.credit || 0).toLocaleString()}</b>
-                </div>
-            `;
-            const marker = L.marker([m.lat, m.lng]).bindPopup(popupContent);
+            const marker = L.marker([m.lat, m.lng]).bindPopup(`<b>🏠 บ้านเลขที่ ${m.houseNo}</b><br>หมวด: ${m.category || 'ไม่ระบุ'}<br></b>🪙 เครดิต: ${m.credit || 0}`);
             clusterGroupRef.current.addLayer(marker);
         });
-        mapRef.current.addLayer(clusterGroupRef.current);
-    }, [displayedMembers]);
+    }, [displayedMembers, isMapReady]); // 👈 ผูกกับ isMapReady ด้วย
 
-    // 3. หมุดตัวเอง (ตามตำแหน่งจริง)
+    // 3. ปักหมุดตัวเรา (รอให้ isMapReady เป็น true)
     useEffect(() => {
+        // เพิ่มเช็คพิกัดจริง
+        if (!isMapReady || !mapRef.current || currentLocation.lat === 0) return;
+
         const L = window.L;
-        if (!L || !mapRef.current) return;
+        const latLng = [currentLocation.lat, currentLocation.lng];
 
-        if (myMarkerRef.current) mapRef.current.removeLayer(myMarkerRef.current);
+        if (!myMarkerRef.current) {
+            // สร้างครั้งแรก
+            const myIcon = L.icon({
+                iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+                iconSize: [25, 41], iconAnchor: [12, 41]
+            });
+            myMarkerRef.current = L.marker(latLng, { icon: myIcon }).addTo(mapRef.current).bindPopup("<b>คุณอยู่ที่นี่</b>");
+        } else {
+            // อัปเดตตำแหน่งหมุดตัวเราทุกครั้งที่ currentLocation เปลี่ยน
+            myMarkerRef.current.setLatLng(latLng);
+        }
 
-        const myIcon = L.icon({
-            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
-            iconSize: [25, 41], iconAnchor: [12, 41]
-        });
+        // ตรงนี้คือตัวที่ทำให้แมพ "ล็อค" ตามตัวเราตลอด
+        // ถ้าไม่อยากให้มันเลื่อนเองจนรำคาญ ให้เอาบรรทัดนี้ออก แล้วไปไว้ในปุ่มกดแทน
+        mapRef.current.setView(latLng, 16);
+    }, [currentLocation, isMapReady]);
 
-        myMarkerRef.current = L.marker([currentLocation.lat, currentLocation.lng], { icon: myIcon })
-            .addTo(mapRef.current).bindPopup("<b>คุณอยู่ที่นี่</b>");
-    }, [currentLocation]);
 
     return (
         <div className="flex flex-col gap-4">
@@ -73,8 +89,13 @@ const MapView = ({ currentLocation, members, findMyLocation, onPinLocation, isLo
                 <button
                     onClick={(e) => {
                         e.preventDefault();
-                        findMyLocation();
-                        mapRef.current?.flyTo([currentLocation.lat, currentLocation.lng], 16);
+                        findMyLocation(); // ดึงพิกัดใหม่
+
+                        // อัปเดตตำแหน่งหมุดและเลื่อนแมพเฉพาะตอนที่กดปุ่มเท่านั้น
+                        if (myMarkerRef.current) {
+                            myMarkerRef.current.setLatLng([currentLocation.lat, currentLocation.lng]);
+                        }
+                        mapRef.current?.flyTo([currentLocation.lat, currentLocation.lng], 16, { animate: true });
                     }}
                     className="absolute top-6 right-6 z-[1000] bg-white p-4 rounded-2xl shadow-lg text-blue-600"
                 >
@@ -82,7 +103,6 @@ const MapView = ({ currentLocation, members, findMyLocation, onPinLocation, isLo
                 </button>
             </div>
 
-            {/* Filter Section */}
             <div className="bg-white p-4 rounded-2xl shadow-md border border-slate-200">
                 <label className="block text-sm font-bold text-slate-500 mb-2">เลือกหมวดหมู่เพื่อดูสมาชิก:</label>
                 <select onChange={(e) => setFilterId(e.target.value)} className="w-full p-3 bg-slate-50 rounded-xl font-bold border-2 border-slate-100 outline-none">
@@ -90,6 +110,12 @@ const MapView = ({ currentLocation, members, findMyLocation, onPinLocation, isLo
                     {villages?.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
                 </select>
             </div>
+
+            {isLoggedIn && (
+                <button onClick={(e) => { e.preventDefault(); onPinLocation(currentLocation); }} className="w-full bg-green-600 text-white p-4 rounded-2xl font-bold shadow-lg">
+                    <MapPin className="inline mr-2" /> ปักหมุดลงทะเบียนบ้านนี้
+                </button>
+            )}
         </div>
     );
 };
