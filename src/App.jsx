@@ -12,12 +12,13 @@ import {
 import {
     LayoutDashboard, Users, Map as MapIcon, History, LogIn,
     Database, FileSpreadsheet, MapPin, Navigation, Info, AlertTriangle,
-    Menu, X, ChevronRight, TrendingUp, Leaf, Wallet, PlusCircle, ChevronDown
+    Menu, X, ChevronRight, TrendingUp, Leaf, Wallet, PlusCircle, ChevronDown,
+    Eye, EyeOff, Search, ChevronLeft, Home, Edit2, Save, Download
 } from 'lucide-react';
 import { db } from './firebase'; // อันนี้ตัวเดียวพอ!
 import {
     collection, doc, getDocs, getDoc, setDoc, updateDoc, deleteDoc, addDoc,
-    query, where, orderBy, limit, increment, serverTimestamp, startAfter
+    query, where, orderBy, limit, increment, serverTimestamp, startAfter, onSnapshot
 } from 'firebase/firestore';
 import MapView from './MapView.jsx';
 
@@ -235,10 +236,12 @@ const DashboardView = ({ stats, villageData, wasteTypeData, members, setCurrentP
                                             </div>
                                         </div>
 
-                                        {/* เครดิต (ชิดขวา) */}
+                                        {/* 🌟 ยอดเงิน (ชิดขวา) */}
                                         <div className="text-right flex flex-col items-end">
-                                            <span className="font-black text-blue-600 group-hover:text-emerald-600 font-mono text-sm">{v.credit.toLocaleString()}</span>
-                                            <span className="text-[9px] font-bold text-slate-400 uppercase">แต้ม</span>
+                                            <span className="font-black text-emerald-600 font-mono text-sm">
+                                                ฿{(v.totalBalance || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                            </span>
+                                            <span className="text-[9px] font-bold text-slate-400 uppercase">ยอดเงิน (บาท)</span>
                                         </div>
                                     </div>
                                 ))}
@@ -297,7 +300,6 @@ const DashboardView = ({ stats, villageData, wasteTypeData, members, setCurrentP
                         </div>
 
                         {/* ปุ่ม Action กดทะลุไปหน้าข้อมูลสมาชิก */}
-                        {/* ปุ่ม Action โทนสีเขียว กดแล้ววาร์ปไปด้านบนของหน้าข้อมูลสมาชิก */}
                         <div className="mt-auto">
                             <button
                                 onClick={() => {
@@ -451,7 +453,7 @@ const PriceView = ({ isLoggedIn, isEditing, setIsEditing }) => {
                         💰 ตารางราคารับซื้อขยะรีไซเคิล
                     </h2>
                     <p className="text-slate-400 text-xs mt-1 font-medium">
-                        📊 ราคารับซื้อประจำเดือน (อัปเดตราคาเมื่อ: <span className="text-blue-600 font-bold">{lastUpdated}</span>)
+                        📊 ราคารับซื้อประจำเดือน (อัปเดตราคาเมื่อ: <span className="text-emerald-600 font-bold">{lastUpdated}</span>)
                     </p>
                 </div>
 
@@ -464,7 +466,7 @@ const PriceView = ({ isLoggedIn, isEditing, setIsEditing }) => {
                                 <button onClick={handleSavePrices} className="px-4 py-2 bg-green-600 text-white rounded-xl font-bold text-xs hover:bg-green-700 shadow-md transition">✅ บันทึกราคา</button>
                             </>
                         ) : (
-                            <button onClick={handleStartEdit} className="px-4 py-2 bg-red-600 text-white rounded-xl font-bold text-xs hover:bg-blue-700 shadow-md transition flex items-center gap-1">🔧 แก้ไขราคา</button>
+                            <button onClick={handleStartEdit} className="px-4 py-2 bg-red-600 text-white rounded-xl font-bold text-xs hover:bg-emerald-700 shadow-md transition flex items-center gap-1">🔧 แก้ไขราคา</button>
                         )}
                     </div>
                 )}
@@ -493,7 +495,7 @@ const PriceView = ({ isLoggedIn, isEditing, setIsEditing }) => {
                                             const val = e.target.value;
                                             setTempPrices(prev => ({ ...prev, [item.id]: val === '' ? '' : Number(val) }));
                                         }}
-                                        className="w-full border-2 border-blue-400 rounded-xl px-2 py-1.5 text-right font-black text-slate-800 outline-none text-base bg-blue-50/50"
+                                        className="w-full border-2 border-emerald-400 rounded-xl px-2 py-1.5 text-right font-black text-slate-800 outline-none text-base bg-emerald-50/50"
                                     />
                                 </div>
                             ) : (
@@ -535,7 +537,7 @@ const PriceView = ({ isLoggedIn, isEditing, setIsEditing }) => {
                                     <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 font-bold">กก.</span>
                                 </div>
                                 <div className="text-right text-[11px] text-slate-400 font-medium">
-                                    เป็นเงิน: <span className="text-blue-500 font-bold font-mono">{((Number(calcWeights[item.id]) || 0) * item.price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span> บ.
+                                    เป็นเงิน: <span className="text-emerald-500 font-bold font-mono">{((Number(calcWeights[item.id]) || 0) * item.price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span> บ.
                                 </div>
                             </div>
                         ))}
@@ -562,11 +564,22 @@ const PriceView = ({ isLoggedIn, isEditing, setIsEditing }) => {
 // ➕ [ขั้นตอนที่ 2: เพิ่มใหม่] คอมโพเนนต์หน้าต่างป๊อปอัพสำหรับแก้ไขข้อมูลสมาชิกและพิกัดหมุด (ระบบ Leaflet)
 // =========================================================================
 const EditMemberModal = ({ member, villageData, onSave, onDelete, onClose }) => {
-    const [editData, setEditData] = useState({ ...member });
+    // 🌟 ดึงข้อมูลเดิมมาตั้งต้น พร้อมเช็คค่า balance และ hasWelfare ให้มีค่าเริ่มต้น
+    const [editData, setEditData] = useState({
+        ...member,
+        balance: member.balance || 0,
+        hasWelfare: member.hasWelfare || false
+    });
     const [showWaste, setShowWaste] = useState(false);
 
-    // อัตราตัวคูณเครดิตสะสม (น้ำหนักขยะ 1 กิโลกรัม = 10 เครดิต) 
-    const CREDIT_FACTOR = 10;
+    // 🌟 เปลี่ยนจาก CREDIT_FACTOR เป็น CARBON_MULTIPLIERS ตามมาตรฐานใหม่
+    const CARBON_MULTIPLIERS = {
+        'พลาสติก': 1.0310,
+        'กระดาษ': 5.6735,
+        'แก้ว': 0.2760,
+        'อลูมิเนียม': 9.1270,
+        'โลหะผสม': 4.3910
+    };
 
     // 📍 เรียกใช้งานแผนที่ย่อระบบ Leaflet ตัวเก่งของคุณ เพื่อให้แอดมินลากเลื่อนหมุดพิกัดบ้านได้
     useEffect(() => {
@@ -620,7 +633,7 @@ const EditMemberModal = ({ member, villageData, onSave, onDelete, onClose }) => 
                 <div className="p-6 bg-slate-900 text-white flex justify-between items-center shrink-0">
                     <div>
                         <h3 className="text-xl font-bold">✏️ แก้ไขข้อมูลครัวเรือน</h3>
-                        <p className="text-xs text-slate-400 mt-0.5">แก้ไขพิกัดหมุด รายชื่อสมาชิก หรือปริมาณขยะตั้งต้น</p>
+                        <p className="text-xs text-slate-400 mt-0.5">แก้ไขพิกัดหมุด รายชื่อสมาชิก ยอดเงิน หรือปริมาณขยะ</p>
                     </div>
                     <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition">✕</button>
                 </div>
@@ -705,6 +718,29 @@ const EditMemberModal = ({ member, villageData, onSave, onDelete, onClose }) => 
                         </div>
                     </div>
 
+                    {/* 🌟 3.5 เพิ่มใหม่: แก้ไขยอดเงินคงเหลือ & สถานะสวัสดิการ */}
+                    <div className="pt-4 border-t border-slate-100">
+                        <label className="block text-sm font-bold mb-3 text-slate-700">💰 ข้อมูลบัญชีการเงิน & สวัสดิการ</label>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="relative">
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">ยอดเงิน ฿</span>
+                                <input
+                                    type="number"
+                                    className="w-full border-2 border-slate-100 pl-16 pr-3 py-3 rounded-xl outline-none bg-slate-50 font-black text-blue-600 focus:border-blue-400"
+                                    value={editData.balance}
+                                    onChange={e => setEditData({ ...editData, balance: parseFloat(e.target.value) || 0 })}
+                                />
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setEditData({ ...editData, hasWelfare: !editData.hasWelfare })}
+                                className={`w-full py-3 rounded-xl font-bold text-sm transition-all shadow-sm border ${editData.hasWelfare ? 'bg-amber-100 text-amber-700 border-amber-300' : 'bg-slate-100 text-slate-400 border-slate-200 hover:bg-slate-200'}`}
+                            >
+                                {editData.hasWelfare ? '🎁 ได้สิทธิ์สวัสดิการ' : '❌ ไม่มีสิทธิ์สวัสดิการ'}
+                            </button>
+                        </div>
+                    </div>
+
                     {/* 4. แก้ไขประเภทขยะของบ้านสมาชิกและน้ำหนักที่เคยกรอกพลาดไว้ได้ */}
                     <div className="border border-slate-100 rounded-2xl overflow-hidden shadow-sm">
                         <button
@@ -712,7 +748,7 @@ const EditMemberModal = ({ member, villageData, onSave, onDelete, onClose }) => 
                             onClick={() => setShowWaste(!showWaste)}
                             className="w-full bg-slate-50 hover:bg-slate-100 p-3.5 text-xs font-black text-slate-600 flex justify-between items-center transition"
                         >
-                            <span>📦 แก้ไขรายการน้ำหนักขยะสะสมตั้งต้น (กก.)</span>
+                            <span>📦 แก้ไขรายการน้ำหนักขยะสะสม (กก.)</span>
                             <span>{showWaste ? '▲ ปิดแผง' : '▼ เปิดแผงแก้ไขน้ำหนัก'}</span>
                         </button>
                         {showWaste && (
@@ -727,11 +763,15 @@ const EditMemberModal = ({ member, villageData, onSave, onDelete, onClose }) => 
                                             onChange={(e) => {
                                                 const weight = Math.max(0, parseFloat(e.target.value) || 0);
                                                 const nextWaste = { ...editData.wasteData, [type]: weight };
-                                                // คำนวณแต้มเครดิตสะสมใหม่ของบ้านหลังนี้อัตโนมัติเมื่อแก้ตัวเลขกิโลกรัมขยะ (น้ำหนัก x 10)
-                                                const nextCredit = Object.values(nextWaste).reduce((s, w) => s + (Number(w) * CREDIT_FACTOR), 0);
-                                                setEditData({ ...editData, wasteData: nextWaste, credit: nextCredit });
+
+                                                // 🌟 คำนวณคาร์บอนเครดิตใหม่ทันที ตามสูตรใหม่ (ทดแทนของเดิมที่คูณ 10)
+                                                const nextCredit = Object.entries(nextWaste).reduce((sum, [wType, wWeight]) => {
+                                                    return sum + (Number(wWeight) * (CARBON_MULTIPLIERS[wType] || 0));
+                                                }, 0);
+
+                                                setEditData({ ...editData, wasteData: nextWaste, credit: Number(nextCredit.toFixed(4)) });
                                             }}
-                                            className="border-2 border-slate-100 p-2 rounded-xl outline-none bg-slate-50 font-bold text-sm text-right pr-4"
+                                            className="border-2 border-slate-100 p-2 rounded-xl outline-none bg-slate-50 font-bold text-sm text-right pr-4 focus:border-emerald-400"
                                         />
                                     </div>
                                 ))}
@@ -741,12 +781,13 @@ const EditMemberModal = ({ member, villageData, onSave, onDelete, onClose }) => 
 
                     {/* 5. สามารถแก้ไขเครดิตได้ (กล่องกรอกแก้ตัวเลขแต้มได้โดยตรง) */}
                     <div>
-                        <label className="block text-sm font-bold mb-1 text-slate-700">🪙 แก้ไขแต้มเครดิตสะสมของบ้านหลังนี้ (ปรับแต่งตัวเลขโดยตรงได้)</label>
+                        <label className="block text-sm font-bold mb-1 text-slate-700">🌱 แก้ไขคาร์บอนเครดิตสะสม (kgCO2e) (ปรับแต่งตัวเลขโดยตรงได้)</label>
                         <input
                             type="number"
+                            step="any" // 🌟 เปลี่ยนเป็น step="any" เพื่อให้กรอกทศนิยมได้
                             value={editData.credit || 0}
-                            onChange={(e) => setEditData({ ...editData, credit: Math.max(0, parseInt(e.target.value) || 0) })}
-                            className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none bg-slate-50 font-black text-blue-600 text-lg"
+                            onChange={(e) => setEditData({ ...editData, credit: Math.max(0, parseFloat(e.target.value) || 0) })}
+                            className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none bg-slate-50 font-black text-emerald-600 text-lg focus:border-emerald-400"
                         />
                     </div>
 
@@ -864,12 +905,21 @@ const MembersView = ({ members, setMembers, villages, setVillages, isLoggedIn, l
             updatedMember.category = targetVillage.name;
         }
 
-        // 1. อัปเดตรายชื่อและย้ายหมวดในสเตตัสทะเบียนสมาชิกหลัก
+        // 🌟 1. ดึงชุดตัวคูณคาร์บอนเครดิตมาเตรียมไว้
+        const CARBON_MULTIPLIERS = {
+            'พลาสติก': 1.0310,
+            'กระดาษ': 5.6735,
+            'แก้ว': 0.2760,
+            'อลูมิเนียม': 9.1270,
+            'โลหะผสม': 4.3910
+        };
+
+        // 2. อัปเดตรายชื่อและย้ายหมวดในสเตตัสทะเบียนสมาชิกหลัก
         const nextMembers = members.map(m => m.id === updatedMember.id ? updatedMember : m);
         setMembers(nextMembers);
         localStorage.setItem('local_members_data', JSON.stringify(nextMembers));
 
-        // 2. หักลบน้ำหนักขยะออกจากหมวดเก่า และวิ่งไปบวกเพิ่มสะสมในหมวดใหม่
+        // 3. หักลบน้ำหนักขยะออกจากหมวดเก่า และวิ่งไปบวกเพิ่มสะสมในหมวดใหม่
         setVillages(prevVillages => {
             const updatedVillages = prevVillages.map(v => {
                 const nextWasteData = { ...v.wasteData };
@@ -891,20 +941,26 @@ const MembersView = ({ members, setMembers, villages, setVillages, isLoggedIn, l
 
             const finalVillages = updatedVillages.map(v => {
                 const vMembers = nextMembers.filter(m => m.villageId === v.id);
-                const memberCredits = vMembers.reduce((sum, m) => sum + (m.credit || 0), 0);
-                const wasteCredits = v.wasteData ? Object.values(v.wasteData).reduce((a, b) => a + Number(b), 0) * 10 : 0;
-                return { ...v, credit: memberCredits + wasteCredits };
+                const memberCredits = vMembers.reduce((sum, m) => sum + (Number(m.credit) || 0), 0);
+
+                // 🌟 4. แก้ไขจุดสำคัญ! เปลี่ยนจากการคูณ 10 เป็นการใช้สูตรคำนวณคาร์บอน
+                const wasteCredits = v.wasteData ? Object.entries(v.wasteData).reduce((sum, [type, weight]) => {
+                    return sum + (Number(weight) * (CARBON_MULTIPLIERS[type] || 0));
+                }, 0) : 0;
+
+                // คืนค่าพร้อมปัดทศนิยม 4 ตำแหน่งเพื่อความเป๊ะ
+                return { ...v, credit: Number((memberCredits + wasteCredits).toFixed(4)) };
             });
 
             localStorage.setItem('village_data', JSON.stringify(finalVillages));
             return finalVillages;
         });
 
+        // 5. ดันขึ้น Cloud
         try {
             await setDoc(doc(db, "members", String(updatedMember.id)), updatedMember, { merge: true });
             setMembers(members.map(m => m.id === updatedMember.id ? updatedMember : m));
-            // เก็บ alert ไว้ที่เดียวตอนเสร็จทุกอย่าง
-            alert(`อัปเดตตำแหน่งบ้านและข้อมูลสำเร็จ! ${updatedMember.houseNo} ไปยัง ${updatedMember.category} และบันทึกลง Cloud สำเร็จ!`);
+            alert(`💾 อัปเดตข้อมูลบ้านเลขที่ ${updatedMember.houseNo} ลง Cloud สำเร็จเรียบร้อย!`);
         } catch (err) {
             console.error("อัปเดต Firebase พลาด:", err);
             alert("❌ บันทึกข้อมูลไม่สำเร็จ กรุณาตรวจสอบการเชื่อมต่อ");
@@ -1015,6 +1071,14 @@ const MembersView = ({ members, setMembers, villages, setVillages, isLoggedIn, l
         setIsRecordWasteOpen(false);
         alert(`⚖️ บันทึกยอดขยะฝากเพิ่มสำเร็จ!`);
     };
+    const [currentPageNumber, setCurrentPageNumber] = useState(1);
+    const itemsPerPage = 10;
+
+    // 🌟 รีเซ็ตกลับไปหน้า 1 เสมอเวลาค้นหาหรือเปลี่ยนหมวดหมู่
+    React.useEffect(() => {
+        setCurrentPageNumber(1);
+    }, [selectedSortVillageId, searchTerm]);
+
     const displayedMembers = useMemo(() => {
         if (!members) return [];
         return members.filter(m => {
@@ -1025,8 +1089,11 @@ const MembersView = ({ members, setMembers, villages, setVillages, isLoggedIn, l
         });
     }, [members, selectedSortVillageId, searchTerm]);
 
+    // คำนวณจำนวนหน้าทั้งหมด
+    const totalPages = Math.ceil(displayedMembers.length / itemsPerPage);
+
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 animate-in fade-in duration-500">
             {/* หัวข้อหน้าจอ */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
@@ -1072,116 +1139,155 @@ const MembersView = ({ members, setMembers, villages, setVillages, isLoggedIn, l
                         }
                     </div>
                 ) : (
-                    displayedMembers.map((member) => {
-                        const isExpanded = expandedMemberId === member.id;
-                        const credit = Number(member.credit) || 0;
-                        const welfare = WELFARE_TIERS.find(t =>
-                            credit >= t.min && (t.max === undefined || credit <= t.max)
-                        );
+                    // 🌟 ใช้ .slice() ตัดข้อมูลมาแสดงทีละ 10 รายการตามหน้าปัจจุบัน
+                    displayedMembers
+                        .slice((currentPageNumber - 1) * itemsPerPage, currentPageNumber * itemsPerPage)
+                        .map((member) => {
+                            const isExpanded = expandedMemberId === member.id;
+                            const credit = Number(member.credit) || 0; // คาร์บอนเครดิต
+                            const balance = Number(member.balance) || 0; // ยอดเงินคงเหลือ
+                            const hasWelfare = member.hasWelfare || false; // สิทธิ์สวัสดิการ
 
-                        return (
-                            <div
-                                key={member.id}
-                                className="bg-white/90 backdrop-blur-md border border-sky-100/80 rounded-[28px] p-6 shadow-sm hover:shadow-xl hover:border-sky-200 hover:-translate-y-0.5 transition-all duration-300 flex flex-col gap-4"
-                            >
-                                {/* ชั้นที่ 1: ส่วนหัว */}
-                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-slate-100">
-                                    <div className="flex flex-wrap items-center gap-2.5">
-                                        <span className="bg-blue-50 text-blue-600 text-base font-black px-3 py-1.5 rounded-2xl border border-blue-100">
-                                            🏠 บ้านเลขที่ {member.houseNo}
-                                        </span>
-                                        <span className="text-xs font-bold px-2.5 py-1 bg-blue-100 text-blue-700 rounded-xl">
-                                            {member.category || 'ไม่ระบุหมวด'}
-                                        </span>
-                                        <span className="text-xs font-black px-3 py-1 bg-amber-50 text-amber-600 border border-amber-200 rounded-xl flex items-center gap-1 font-mono">
-                                            🪙 {(member.credit || 0).toLocaleString()} แต้ม
-                                        </span>
-                                        <span className="text-[10px] font-bold px-3 py-1 bg-green-100 text-green-700 rounded-xl border border-green-200">
-                                            🎁 สวัสดิการ: {welfare ? welfare.reward : "ยังไม่ถึงเกณฑ์"}
-                                        </span>
-                                    </div>
+                            return (
+                                <div
+                                    key={member.id}
+                                    className="bg-white/90 backdrop-blur-md border border-sky-100/80 rounded-[28px] p-6 shadow-sm hover:shadow-xl hover:border-sky-200 hover:-translate-y-0.5 transition-all duration-300 flex flex-col gap-4"
+                                >
+                                    {/* ชั้นที่ 1: ส่วนหัว */}
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-slate-100">
+                                        <div className="flex flex-wrap items-center gap-2.5">
+                                            <span className="bg-blue-50 text-blue-600 text-base font-black px-3 py-1.5 rounded-2xl border border-blue-100">
+                                                🏠 บ้านเลขที่ {member.houseNo}
+                                            </span>
+                                            <span className="text-xs font-bold px-2.5 py-1 bg-blue-100 text-blue-700 rounded-xl">
+                                                {member.category || 'ไม่ระบุหมวด'}
+                                            </span>
 
-                                    <div className="flex items-center gap-2 justify-end">
-                                        <span className={`px-3 py-1.5 rounded-full text-xs font-bold border ${member.isSorted
-                                            ? 'bg-green-100 text-green-600 border-green-200'
-                                            : 'bg-slate-100 text-slate-400 border-slate-200'
-                                            }`}>
-                                            {member.isSorted ? '✅ คัดแยกประเภทขยะแล้ว' : '⚪ ยังไม่คัดแยกประเภทขยะ'}
-                                        </span>
+                                            {/* 🌟 ป้ายยอดเงินคงเหลือ (ใหม่) */}
+                                            <span className="text-xs font-black px-3 py-1 bg-green-50 text-green-700 border border-green-200 rounded-xl flex items-center gap-1 font-mono">
+                                                💰 ฿{balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                            </span>
 
-                                        {isLoggedIn && (
-                                            <button
-                                                type="button"
-                                                onClick={() => setEditingMember(member)}
-                                                className="bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1 border"
-                                            >
-                                                ⚙️ แก้ไขข้อมูล
-                                            </button>
-                                        )}
-                                    </div>
-                                </div>
+                                            {/* 🌟 ป้ายคาร์บอนเครดิต (ใหม่) */}
+                                            <span className="text-xs font-black px-3 py-1 bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-xl flex items-center gap-1 font-mono">
+                                                🌱 {credit.toFixed(4)} kgCO2e
+                                            </span>
 
-                                {/* ชั้นที่ 2: รายการขยะ */}
-                                <div className="bg-slate-50/80 rounded-2xl p-4 border border-slate-100">
-                                    <p className="text-xs font-bold text-slate-400 mb-2.5">📦 ปริมาณน้ำหนักขยะประจำครัวเรือน</p>
-                                    <div className="flex flex-wrap gap-2">
-                                        {member.wasteData && Object.entries(member.wasteData).some(([_, w]) => Number(w) > 0) ? (
-                                            Object.entries(member.wasteData).map(([type, weight]) => {
-                                                if (Number(weight) <= 0) return null;
-                                                return (
-                                                    <div key={type} className="bg-white border border-slate-200 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-600 flex items-center gap-1.5 shadow-sm">
-                                                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
-                                                        <span>{type}:</span>
-                                                        <span className="text-blue-600 font-black">{Number(weight).toFixed(2)}</span>
-                                                        <span className="text-[10px] text-slate-400">กก.</span>
-                                                    </div>
-                                                );
-                                            })
-                                        ) : (
-                                            <p className="text-xs text-slate-400 italic">ไม่มีข้อมูลการบันทึกขยะนำฝากตั้งต้น</p>
-                                        )}
-                                    </div>
-                                </div>
+                                            {/* 🌟 ป้ายสวัสดิการจาก Checkbox (ใหม่) */}
+                                            <span className={`text-[10px] font-bold px-3 py-1 rounded-xl border ${hasWelfare ? 'bg-amber-100 text-amber-700 border-amber-200' : 'bg-slate-100 text-slate-400 border-slate-200'}`}>
+                                                {hasWelfare ? '🎁 ได้รับสิทธิ์สวัสดิการกรณีเสียชีวิต' : '❌ ไม่มีสวัสดิการ'}
+                                            </span>
+                                        </div>
 
-                                {/* ชั้นที่ 3: รายชื่อสมาชิกแบบ Dropdown */}
-                                <div className="w-full">
-                                    <button
-                                        type="button"
-                                        onClick={() => setExpandedMemberId(isExpanded ? null : member.id)}
-                                        className="w-full py-2.5 bg-slate-50 hover:bg-slate-100 rounded-xl text-xs font-bold text-slate-500 flex items-center justify-center gap-1.5 transition-colors"
-                                    >
-                                        <span>👥 รายชื่อสมาชิกในบ้าน ({member.familyMembers ? member.familyMembers.filter(n => n && n.trim() !== '').length : 0} คน)</span>
-                                        <span className="text-[10px]">{isExpanded ? '▲' : '▼'}</span>
-                                    </button>
+                                        <div className="flex items-center gap-2 justify-end">
+                                            <span className={`px-3 py-1.5 rounded-full text-xs font-bold border ${member.isSorted
+                                                ? 'bg-green-100 text-green-600 border-green-200'
+                                                : 'bg-slate-100 text-slate-400 border-slate-200'
+                                                }`}>
+                                                {member.isSorted ? '✅ คัดแยกประเภทขยะแล้ว' : '⚪ ยังไม่คัดแยกประเภทขยะ'}
+                                            </span>
 
-                                    {isExpanded && (
-                                        <div className="mt-2 p-4 bg-white border border-slate-100 rounded-2xl space-y-2 shadow-inner">
-                                            {member.familyMembers && member.familyMembers.filter(n => n && n.trim() !== '').length > 0 ? (
-                                                member.familyMembers.filter(n => n && n.trim() !== '').map((name, idx) => (
-                                                    <div key={idx} className="pt-2 first:pt-0 text-xs font-bold text-slate-600 flex items-center gap-2 border-b border-slate-50 last:border-0 pb-2 last:pb-0">
-                                                        <span className="text-slate-300 font-mono">{idx + 1}.</span>
-                                                        <span>{name}</span>
-                                                    </div>
-                                                ))
-                                            ) : (
-                                                <p className="text-xs text-slate-400 italic text-center py-1">ไม่มีข้อมูลรายชื่อสมาชิกในระบบ</p>
+                                            {isLoggedIn && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setEditingMember(member)}
+                                                    className="bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1 border"
+                                                >
+                                                    ⚙️ แก้ไขข้อมูล
+                                                </button>
                                             )}
                                         </div>
-                                    )}
-                                </div>
+                                    </div>
 
-                            </div>
-                        );
-                    })
+                                    {/* ชั้นที่ 2: รายการขยะ */}
+                                    <div className="bg-slate-50/80 rounded-2xl p-4 border border-slate-100">
+                                        <p className="text-xs font-bold text-slate-400 mb-2.5">📦 ปริมาณน้ำหนักขยะประจำครัวเรือน</p>
+                                        <div className="flex flex-wrap gap-2">
+                                            {member.wasteData && Object.entries(member.wasteData).some(([_, w]) => Number(w) > 0) ? (
+                                                Object.entries(member.wasteData).map(([type, weight]) => {
+                                                    if (Number(weight) <= 0) return null;
+                                                    return (
+                                                        <div key={type} className="bg-white border border-slate-200 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-600 flex items-center gap-1.5 shadow-sm">
+                                                            <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                                                            <span>{type}:</span>
+                                                            <span className="text-blue-600 font-black">{Number(weight).toFixed(2)}</span>
+                                                            <span className="text-[10px] text-slate-400">กก.</span>
+                                                        </div>
+                                                    );
+                                                })
+                                            ) : (
+                                                <p className="text-xs text-slate-400 italic">ไม่มีข้อมูลการบันทึกขยะนำฝาก</p>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* ชั้นที่ 3: รายชื่อสมาชิกแบบ Dropdown */}
+                                    <div className="w-full">
+                                        <button
+                                            type="button"
+                                            onClick={() => setExpandedMemberId(isExpanded ? null : member.id)}
+                                            className="w-full py-2.5 bg-slate-50 hover:bg-slate-100 rounded-xl text-xs font-bold text-slate-500 flex items-center justify-center gap-1.5 transition-colors border border-transparent hover:border-slate-200"
+                                        >
+                                            <span>👥 รายชื่อสมาชิกในบ้าน ({member.familyMembers ? member.familyMembers.filter(n => n && n.trim() !== '').length : 0} คน)</span>
+                                            <span className="text-[10px]">{isExpanded ? '▲' : '▼'}</span>
+                                        </button>
+
+                                        {isExpanded && (
+                                            <div className="mt-2 p-4 bg-white border border-slate-100 rounded-2xl space-y-2 shadow-inner">
+                                                {member.familyMembers && member.familyMembers.filter(n => n && n.trim() !== '').length > 0 ? (
+                                                    member.familyMembers.filter(n => n && n.trim() !== '').map((name, idx) => (
+                                                        <div key={idx} className="pt-2 first:pt-0 text-xs font-bold text-slate-600 flex items-center gap-2 border-b border-slate-50 last:border-0 pb-2 last:pb-0">
+                                                            <span className="text-slate-300 font-mono">{idx + 1}.</span>
+                                                            <span>{name}</span>
+                                                        </div>
+                                                    ))
+                                                ) : (
+                                                    <p className="text-xs text-slate-400 italic text-center py-1">ไม่มีข้อมูลรายชื่อสมาชิกในระบบ</p>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                </div>
+                            );
+                        })
                 )}
-                {members.length > 0 && (
-                    <button
-                        onClick={() => loadMembers(selectedSortVillageId, false)}
-                        disabled={loadingMore}
-                        className="w-full py-4 bg-white border-2 border-dashed border-blue-200 rounded-2xl font-bold text-blue-600 hover:bg-blue-50 transition"
-                    >
-                        {loadingMore ? "กำลังโหลด..." : "➕ ดูรายชื่อสมาชิกเพิ่มเติม"}
-                    </button>
+
+                {/* 🌟 ระบบแบ่งหน้า (Pagination) แทนปุ่มโหลดเพิ่ม */}
+                {displayedMembers.length > itemsPerPage && (
+                    <div className="flex flex-col sm:flex-row items-center justify-between bg-white p-4 rounded-2xl border border-slate-200 shadow-sm mt-6 gap-4">
+                        <button
+                            onClick={() => {
+                                setCurrentPageNumber(prev => Math.max(prev - 1, 1));
+                                window.scrollTo({ top: 0, behavior: 'smooth' });
+                            }}
+                            disabled={currentPageNumber === 1}
+                            className={`px-5 py-2.5 rounded-xl font-bold text-sm w-full sm:w-auto transition-all ${currentPageNumber === 1
+                                ? 'bg-slate-50 text-slate-300 cursor-not-allowed'
+                                : 'bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white'
+                                }`}
+                        >
+                            ◀ หน้าก่อนหน้า
+                        </button>
+
+                        <span className="text-slate-600 font-bold text-sm bg-slate-50 px-6 py-2.5 rounded-xl border border-slate-100 w-full sm:w-auto text-center">
+                            หน้าที่ {currentPageNumber} จาก {totalPages}
+                        </span>
+
+                        <button
+                            onClick={() => {
+                                setCurrentPageNumber(prev => Math.min(prev + 1, totalPages));
+                                window.scrollTo({ top: 0, behavior: 'smooth' });
+                            }}
+                            disabled={currentPageNumber === totalPages}
+                            className={`px-5 py-2.5 rounded-xl font-bold text-sm w-full sm:w-auto transition-all ${currentPageNumber === totalPages
+                                ? 'bg-slate-50 text-slate-300 cursor-not-allowed'
+                                : 'bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white'
+                                }`}
+                        >
+                            หน้าถัดไป ▶
+                        </button>
+                    </div>
                 )}
             </div>
 
@@ -1198,90 +1304,356 @@ const MembersView = ({ members, setMembers, villages, setVillages, isLoggedIn, l
         </div>
     );
 };
-// === หน้าจอแสดงประวัติการทำรายการ (HistoryView) ===
-// แสดงรายการบันทึกขยะและรายรับย้อนหลัง (ปัจจุบันเป็นข้อมูลจำลองเพื่อการแสดงผล UI)
-const HistoryView = ({ members }) => {
+const ManageBalanceView = ({ members, villages, setMembers, db, logAdminAction, setCurrentPage }) => {
+    // สเตตัสการควบคุมหน้าจอ
+    const [selectedVillageId, setSelectedVillageId] = useState(villages.length > 0 ? villages[0].id : '');
+    const [currentPage, setCurrentPageNum] = useState(1);
+    const [searchTerm, setSearchTerm] = useState('');
+
+    // สเตตัสสำหรับการแก้ไข
+    const [editingId, setEditingId] = useState(null);
+    const [editBalance, setEditBalance] = useState('');
+
+    const itemsPerPage = 10;
+
+    // 🔄 กรองข้อมูลตามหมวดหมู่ที่เลือก และคำค้นหา
+    const filteredMembers = useMemo(() => {
+        let result = members;
+        // 1. กรองตามหมวด
+        if (selectedVillageId !== 'all') {
+            result = result.filter(m => Number(m.villageId) === Number(selectedVillageId));
+        }
+        // 2. กรองตามบ้านเลขที่
+        if (searchTerm.trim() !== '') {
+            result = result.filter(m => String(m.houseNo).includes(searchTerm.trim()));
+        }
+        return result;
+    }, [members, selectedVillageId, searchTerm]);
+
+    // 📄 ระบบแบ่งหน้า (Pagination)
+    const totalPages = Math.max(1, Math.ceil(filteredMembers.length / itemsPerPage));
+    const currentMembers = filteredMembers.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+    // รีเซ็ตหน้ากลับไปหน้า 1 เสมอเวลาเปลี่ยนหมวดหรือค้นหา
+    React.useEffect(() => {
+        setCurrentPageNum(1);
+        setEditingId(null);
+    }, [selectedVillageId, searchTerm]);
+
+    // 💾 ฟังก์ชันบันทึกยอดเงินขึ้น Database
+    const handleSaveBalance = async (member) => {
+        const newBalance = Number(editBalance);
+        if (isNaN(newBalance)) return alert("❌ กรุณากรอกตัวเลขให้ถูกต้องครับ");
+
+        try {
+            // อัปเดตข้อมูลก้อนใหม่
+            const updatedMember = { ...member, balance: newBalance };
+
+            // ☁️ ดันขึ้น Firebase
+            await setDoc(doc(db, "members", String(member.id)), updatedMember, { merge: true });
+
+            // 🔄 อัปเดต State ให้หน้าจอเปลี่ยนตามทันที
+            setMembers(prev => prev.map(m => m.id === member.id ? updatedMember : m));
+
+            // 📝 บันทึก Log เจ้าหน้าที่
+            if (typeof logAdminAction === 'function') {
+                logAdminAction(`แก้ไขยอดเงิน บ้านเลขที่ ${member.houseNo} เป็น ฿${newBalance.toLocaleString()}`);
+            }
+
+            setEditingId(null);
+        } catch (error) {
+            console.error("Error updating balance:", error);
+            alert("❌ เกิดข้อผิดพลาดในการบันทึกข้อมูล กรุณาลองใหม่");
+        }
+    };
+
     return (
-        <div className="space-y-4 animate-in fade-in duration-300 text-slate-700">
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-blue-50">
-                <h2 className="font-bold text-xl text-blue-900 mb-4 flex items-center gap-2">
-                    <History size={24} /> ทะเบียนสรุปแต้มเครดิตและน้ำหนักสะสมรายครัวเรือน
-                </h2>
+        <div className="space-y-6 animate-in fade-in duration-500">
+            {/* Header และปุ่มย้อนกลับ */}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
+                <div>
+                    <h2 className="text-2xl font-black text-emerald-800 flex items-center gap-2">
+                        <Wallet className="text-emerald-500" /> จัดการยอดเงินสมาชิก
+                    </h2>
+                    <p className="text-sm text-slate-500 mt-1">อัปเดตยอดเงินคงเหลือรายครัวเรือนแบบเร่งด่วน</p>
+                </div>
+                <button
+                    onClick={() => setCurrentPage('admin-home')} // หรือหน้าที่เป็น Dashboard หลักของน้า
+                    className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-bold transition-colors text-sm"
+                >
+                    ← กลับหน้าแผงจัดการ
+                </button>
+            </div>
 
-                <div className="space-y-3">
-                    {members && members.length > 0 ? (
-                        members.map((m, idx) => {
-                            // คำนวณขยะสะสมรวมของบ้านหลังนี้
-                            const totalHouseWaste = Object.values(m.wasteData || {}).reduce((a, b) => a + Number(b), 0);
-                            return (
-                                <div key={m.id || idx} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100">
-                                    <div>
-                                        <p className="font-bold text-slate-800">🏠 บ้านเลขที่ {m.houseNo}</p>
-                                        <p className="text-xs text-slate-500 mt-1">
-                                            สังกัด: {m.category || 'ไม่ระบุหมวด'} | ขยะสะสมรวม: <span className="font-bold text-blue-600">{totalHouseWaste.toFixed(2)}</span> กก.
-                                        </p>
+            {/* แผงควบคุม (เลือกหมวด + ค้นหา) */}
+            <div className="flex flex-col sm:flex-row gap-4">
+                <div className="bg-white p-2 rounded-2xl border border-slate-200 shadow-sm flex-1 flex items-center px-3">
+                    <span className="text-sm font-bold text-slate-500 mr-2 whitespace-nowrap">📂 เลือกหมวด:</span>
+                    <select
+                        value={selectedVillageId}
+                        onChange={(e) => setSelectedVillageId(e.target.value)}
+                        className="bg-slate-50 border border-slate-200 px-3 py-2 rounded-xl text-sm font-bold text-slate-700 outline-none focus:border-emerald-500 w-full cursor-pointer"
+                    >
+                        <option value="all">-- แสดงทุกหมวดหมู่ --</option>
+                        {villages.map(v => (
+                            <option key={v.id} value={v.id}>{v.name}</option>
+                        ))}
+                    </select>
+                </div>
+
+                <div className="bg-white p-2 rounded-2xl border border-slate-200 shadow-sm flex-1 flex items-center px-3">
+                    <Search size={18} className="text-slate-400 mr-2" />
+                    <input
+                        type="text"
+                        placeholder="ค้นหาบ้านเลขที่..."
+                        className="text-sm font-bold outline-none w-full bg-transparent"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                </div>
+            </div>
+
+            {/* 📋 ตารางรายชื่อ (Card List) */}
+            <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden flex flex-col min-h-[400px]">
+                {/* หัวตาราง */}
+                <div className="grid grid-cols-2 bg-slate-50 p-4 border-b border-slate-100 text-sm font-bold text-slate-500">
+                    <div>บ้านเลขที่ (สมาชิก)</div>
+                    <div className="text-right pr-4">ยอดเงินคงเหลือ (บาท)</div>
+                </div>
+
+                {/* รายการบ้าน */}
+                <div className="divide-y divide-slate-50 flex-grow">
+                    {currentMembers.length > 0 ? (
+                        currentMembers.map(m => (
+                            <div key={m.id} className="grid grid-cols-2 p-4 items-center hover:bg-emerald-50/30 transition-colors">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center">
+                                        <Home size={18} />
                                     </div>
-
-                                    <div className="text-right">
-                                        <p className="text-emerald-600 font-bold font-mono">+{(m.credit || 0 * 10).toFixed(2)} บ.</p>
-                                        <p className="text-[10px] bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full inline-block font-bold">
-                                            🪙 {(m.credit || 0).toLocaleString()} แต้ม
-                                        </p>
+                                    <div>
+                                        <div className="font-black text-slate-700">บ้านเลขที่ {m.houseNo}</div>
+                                        <div className="text-[10px] font-bold text-slate-400">{m.category || 'ไม่ระบุหมวด'}</div>
                                     </div>
                                 </div>
-                            );
-                        })
+
+                                <div className="flex justify-end items-center gap-2">
+                                    {/* ✏️ โหมดแก้ไข vs โหมดแสดงผล */}
+                                    {editingId === m.id ? (
+                                        <div className="flex items-center gap-2 bg-emerald-50 p-1.5 rounded-xl border border-emerald-200">
+                                            <span className="text-emerald-700 font-bold pl-2">฿</span>
+                                            <input
+                                                type="number"
+                                                step="any"
+                                                autoFocus
+                                                value={editBalance}
+                                                onChange={(e) => setEditBalance(e.target.value)}
+                                                className="w-24 bg-white border border-emerald-200 rounded-lg px-2 py-1.5 font-black text-emerald-700 text-right outline-none focus:ring-2 focus:ring-emerald-400"
+                                            />
+                                            <button onClick={() => handleSaveBalance(m)} className="p-1.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 shadow-sm">
+                                                <Save size={16} />
+                                            </button>
+                                            <button onClick={() => setEditingId(null)} className="p-1.5 bg-white text-slate-400 border rounded-lg hover:bg-slate-100">
+                                                <X size={16} />
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <div className="flex items-center gap-4">
+                                            <span className="font-black text-amber-600 text-lg font-mono">
+                                                ฿{(Number(m.balance) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                            </span>
+                                            <button
+                                                onClick={() => {
+                                                    setEditingId(m.id);
+                                                    setEditBalance(m.balance || 0);
+                                                }}
+                                                className="p-2 bg-slate-100 text-slate-500 rounded-xl hover:bg-amber-100 hover:text-amber-600 transition-colors border border-slate-200 hover:border-amber-200 flex items-center gap-1.5 text-xs font-bold shadow-sm"
+                                            >
+                                                <Edit2 size={14} /> แก้ไข
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        ))
                     ) : (
-                        <p className="text-sm text-slate-400 italic text-center py-8">ยังไม่มีข้อมูลประวัติครัวเรือนสมาชิกถูกบันทึกในระบบ</p>
+                        <div className="p-10 text-center text-slate-400 font-bold flex flex-col items-center justify-center h-full">
+                            <Wallet size={48} className="mb-4 text-slate-200" />
+                            ไม่พบข้อมูลสมาชิกในหมวดนี้
+                        </div>
                     )}
+                </div>
+
+                {/* 📄 Pagination (ด้านล่างสุด) */}
+                {filteredMembers.length > 0 && (
+                    <div className="bg-slate-50 border-t border-slate-100 p-4 flex items-center justify-between">
+                        <button
+                            onClick={() => setCurrentPageNum(prev => Math.max(prev - 1, 1))}
+                            disabled={currentPage === 1}
+                            className={`flex items-center gap-1 px-4 py-2 rounded-xl font-bold text-sm transition-colors ${currentPage === 1 ? 'bg-slate-100 text-slate-300 cursor-not-allowed' : 'bg-white text-slate-600 hover:bg-emerald-50 hover:text-emerald-600 border shadow-sm'}`}
+                        >
+                            <ChevronLeft size={16} /> ก่อนหน้า
+                        </button>
+
+                        <span className="font-bold text-slate-500 text-sm bg-slate-100 px-4 py-2 rounded-xl">
+                            หน้าที่ {currentPage} จากทั้งหมด {totalPages}
+                        </span>
+
+                        <button
+                            onClick={() => setCurrentPageNum(prev => Math.min(prev + 1, totalPages))}
+                            disabled={currentPage === totalPages}
+                            className={`flex items-center gap-1 px-4 py-2 rounded-xl font-bold text-sm transition-colors ${currentPage === totalPages ? 'bg-slate-100 text-slate-300 cursor-not-allowed' : 'bg-white text-slate-600 hover:bg-emerald-50 hover:text-emerald-600 border shadow-sm'}`}
+                        >
+                            ถัดไป <ChevronRight size={16} />
+                        </button>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
+// === หน้าจอแสดงประวัติการทำรายการ (HistoryView) โฉมใหม่ ===
+const HistoryView = ({ transactions, villages, db }) => { // 🌟 ต้องรับ db มาใช้ลบข้อมูล
+    const [selectedCategory, setSelectedCategory] = useState('all');
+
+    const filteredTx = (transactions || []).filter(tx =>
+        selectedCategory === 'all' || tx.category === selectedCategory
+    );
+
+    const handleExportExcel = () => {
+        const headers = ['ลำดับ', 'วันที่', 'เวลา', 'หมวดหมู่', 'บ้านเลขที่', 'คาร์บอนที่ได้ (kgCO2e)', 'พลาสติก (กก.)', 'กระดาษ (กก.)', 'แก้ว (กก.)', 'อลูมิเนียม (กก.)', 'โลหะผสม (กก.)'];
+        const dataRows = filteredTx.map((tx, i) => [
+            i + 1, tx.date, tx.time, tx.category || 'ไม่ระบุ', tx.houseNo,
+            (Number(tx.creditAdded) || 0).toFixed(4),
+            (Number(tx.wasteData?.['พลาสติก']) || 0).toFixed(2),
+            (Number(tx.wasteData?.['กระดาษ']) || 0).toFixed(2),
+            (Number(tx.wasteData?.['แก้ว']) || 0).toFixed(2),
+            (Number(tx.wasteData?.['อลูมิเนียม']) || 0).toFixed(2),
+            (Number(tx.wasteData?.['โลหะผสม']) || 0).toFixed(2)
+        ]);
+
+        const rows = [headers, ...dataRows];
+        const csvContent = "\uFEFF" + rows.map(e => e.map(item => `"${String(item).replace(/"/g, '""')}"`).join(",")).join("\n");
+        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        const fileName = selectedCategory === 'all' ? 'ประวัติฝากขยะทุกหมวด' : `ประวัติฝากขยะ_${selectedCategory}`;
+        link.download = `${fileName}_${new Date().toISOString().split('T')[0]}.csv`;
+        link.click();
+    };
+
+    // 🌟 ฟังก์ชันล้างประวัติจาก Database
+    const handleClearHistory = async () => {
+        if (!confirm(`⚠️ ยืนยันการ "ล้างประวัติการฝากขยะ" ของ ${selectedCategory === 'all' ? 'ทุกหมวดหมู่' : selectedCategory} ออกจากฐานข้อมูล?\n(ยอดเงินและคาร์บอนจริงของสมาชิกจะไม่หายไป แนะนำให้ Export ไว้ก่อน)`)) return;
+
+        try {
+            for (const tx of filteredTx) {
+                await deleteDoc(doc(db, "waste_transactions", String(tx.id)));
+            }
+            alert("🗑️ ล้างประวัติการฝากขยะบนระบบ Cloud สำเร็จ");
+        } catch (error) {
+            console.error("Error clearing DB:", error);
+            alert("❌ ลบประวัติผิดพลาด");
+        }
+    };
+
+    return (
+        <div className="space-y-4 animate-in fade-in duration-300 text-slate-700">
+            <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+                <div className="flex flex-col lg:flex-row justify-between gap-4 mb-6">
+                    <div>
+                        <h2 className="font-bold text-xl text-slate-800 flex items-center gap-2"><History className="text-purple-500" /> ประวัติการนำฝากขยะ</h2>
+                        <p className="text-sm text-slate-500 mt-1">บันทึกประวัติการฝากแต่ละครั้ง (ล้างเพื่อลดภาระฐานข้อมูลได้)</p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <select value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)} className="bg-slate-50 border p-2 rounded-xl text-sm font-bold outline-none">
+                            <option value="all">คัดกรอง: ดูทุกหมวดหมู่</option>
+                            {villages && villages.map((v, i) => <option key={i} value={v.name}>{v.name}</option>)}
+                        </select>
+                        {filteredTx.length > 0 && <button onClick={handleExportExcel} className="bg-emerald-50 text-emerald-600 px-4 py-2 rounded-xl font-bold flex gap-2"><Download size={16} /> Export</button>}
+                        {filteredTx.length > 0 && <button onClick={handleClearHistory} className="bg-white text-red-500 border border-red-200 px-4 py-2 rounded-xl font-bold">🗑️ ล้างประวัติ</button>}
+                    </div>
+                </div>
+
+                {/* รายการเหมือนเดิม */}
+                <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2 scrollbar-thin">
+                    {filteredTx.length > 0 ? filteredTx.map((tx) => (
+                        <div key={tx.id} className="p-4 bg-slate-50 rounded-2xl border shadow-sm flex flex-col gap-3">
+                            <div className="flex justify-between border-b pb-2">
+                                <div className="font-black text-lg">🏠 บ้านเลขที่ {tx.houseNo} <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-lg ml-2">{tx.category}</span></div>
+                                <div className="text-right text-xs"><p className="text-slate-400 font-bold">{tx.date} {tx.time}</p><p className="text-emerald-600 font-black">+{Number(tx.creditAdded || 0).toFixed(4)} kgCO2e</p></div>
+                            </div>
+                            <div className="flex gap-2">
+                                {['พลาสติก', 'กระดาษ', 'แก้ว', 'อลูมิเนียม', 'โลหะผสม'].map(type => Number(tx.wasteData?.[type]) > 0 && (
+                                    <span key={type} className="bg-white px-2 py-1 border rounded-lg text-xs font-bold text-blue-600">{type}: {Number(tx.wasteData[type]).toFixed(2)} กก.</span>
+                                ))}
+                            </div>
+                        </div>
+                    )) : <p className="text-center text-slate-400 py-10">ยังไม่มีประวัติการฝากขยะในหมวดนี้</p>}
                 </div>
             </div>
         </div>
     );
 };
-// === ➕ [เพิ่มใหม่]: หน้าจอแสดงผลประวัติงานเจ้าหน้าที่แบบแยกขาด (AdminLogsView) ===
-const AdminLogsView = ({ adminLogs, setAdminLogs }) => {
+// === หน้าจอประวัติแอดมิน (AdminLogsView) โฉมใหม่ ===
+const AdminLogsView = ({ adminLogs, db }) => { // 🌟 รับ db
+    const [selectedOperator, setSelectedOperator] = useState('all');
+    const uniqueOperators = [...new Set(adminLogs.map(log => log.operator))];
+    const filteredLogs = adminLogs.filter(log => selectedOperator === 'all' || log.operator === selectedOperator);
+
+    const handleExportExcel = () => {
+        const headers = ['ลำดับ', 'วันที่', 'เวลา', 'ผู้ดำเนินการ', 'รายละเอียดกิจกรรมที่ทำ'];
+        const dataRows = filteredLogs.map((log, i) => [i + 1, log.date, log.time, log.operator, log.action]);
+        const rows = [headers, ...dataRows];
+        const csvContent = "\uFEFF" + rows.map(e => e.map(item => `"${String(item).replace(/"/g, '""')}"`).join(",")).join("\n");
+        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = `ประวัติงาน_${selectedOperator === 'all' ? 'ทั้งหมด' : selectedOperator}_${new Date().toISOString().split('T')[0]}.csv`;
+        link.click();
+    };
+
+    // 🌟 ฟังก์ชันล้างประวัติจาก Database
+    const handleClearLogs = async () => {
+        if (!confirm(`⚠️ ยืนยันการ "ล้างประวัติแอดมิน" ของ ${selectedOperator === 'all' ? 'ทุกคน' : selectedOperator} ออกจากฐานข้อมูล?\n(แนะนำให้ Export ไว้ก่อน)`)) return;
+        try {
+            for (const log of filteredLogs) {
+                await deleteDoc(doc(db, "admin_logs", String(log.id)));
+            }
+            alert("🗑️ ล้างประวัติแอดมินบนระบบ Cloud สำเร็จ");
+        } catch (error) {
+            alert("❌ ลบประวัติผิดพลาด");
+        }
+    };
+
     return (
         <div className="space-y-4 animate-in fade-in duration-300 text-slate-700">
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-amber-100">
-                <div className="flex justify-between items-center mb-4">
-                    <h2 className="font-bold text-xl text-slate-800 flex items-center gap-2">
-                        📋 บันทึกประวัติกิจกรรมการทำงานของเจ้าหน้าที่ (Admin Action Logs)
-                    </h2>
-                    {adminLogs && adminLogs.length > 0 && (
-                        <button
-                            onClick={() => {
-                                if (confirm("⚠️ คุณแน่ใจใช่ไหมที่จะล้างประวัติการทำงานของเจ้าหน้าที่ทั้งหมด?")) {
-                                    localStorage.removeItem('admin_action_logs');
-                                    setAdminLogs([]);
-                                }
-                            }}
-                            className="text-[11px] text-red-500 font-bold hover:bg-red-50 px-2.5 py-1 rounded-lg border border-dashed border-red-200 transition"
-                        >
-                            🗑️ ล้างประวัติล็อก
-                        </button>
-                    )}
+            <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+                <div className="flex flex-col lg:flex-row justify-between gap-4 mb-6">
+                    <div>
+                        <h2 className="font-bold text-xl text-slate-800 flex items-center gap-2"><FileSpreadsheet className="text-red-500" /> บันทึกประวัติกิจกรรมแอดมิน</h2>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <select value={selectedOperator} onChange={(e) => setSelectedOperator(e.target.value)} className="bg-slate-50 border p-2 rounded-xl text-sm font-bold outline-none">
+                            <option value="all">คัดกรอง: ดูแอดมินทุกคน</option>
+                            {uniqueOperators.map((op, i) => <option key={i} value={op}>{op}</option>)}
+                        </select>
+                        {filteredLogs.length > 0 && <button onClick={handleExportExcel} className="bg-emerald-50 text-emerald-600 px-4 py-2 rounded-xl font-bold flex gap-2"><Download size={16} /> Export</button>}
+                        {filteredLogs.length > 0 && <button onClick={handleClearLogs} className="bg-white text-red-500 border border-red-200 px-4 py-2 rounded-xl font-bold">🗑️ ล้างประวัติ</button>}
+                    </div>
                 </div>
 
                 <div className="space-y-3 max-h-[70vh] overflow-y-auto pr-2">
-                    {adminLogs && adminLogs.length > 0 ? (
-                        adminLogs.map((log) => (
-                            <div key={log.id} className="flex items-center justify-between p-3.5 bg-amber-50/40 border border-amber-100 rounded-xl text-sm">
-                                <div className="flex items-start gap-3">
-                                    <span className="bg-amber-100 text-amber-700 font-bold px-2 py-0.5 rounded-lg text-xs mt-0.5 shrink-0">
-                                        👤 {log.operator}
-                                    </span>
-                                    <p className="font-semibold text-slate-700">{log.action}</p>
-                                </div>
-                                <div className="text-right text-slate-400 text-xs font-medium shrink-0 pl-4 font-mono">
-                                    <p>{log.time}</p>
-                                    <p className="text-[10px] opacity-70">{log.date}</p>
-                                </div>
+                    {filteredLogs.length > 0 ? filteredLogs.map((log) => (
+                        <div key={log.id} className="flex p-4 bg-slate-50 hover:bg-amber-50/50 rounded-2xl border shadow-sm justify-between items-center">
+                            <div>
+                                <span className="bg-amber-100 text-amber-800 text-xs px-2 py-1 rounded-lg font-bold">👤 {log.operator}</span>
+                                <p className="font-bold text-sm text-slate-700 mt-2">{log.action}</p>
                             </div>
-                        ))
-                    ) : (
-                        <p className="text-sm text-slate-400 italic text-center py-8">ยังไม่มีบันทึกกิจกรรมการทำงานจากเจ้าหน้าที่ในระบบ</p>
-                    )}
+                            <div className="text-right text-xs bg-white px-3 py-1.5 rounded-xl border">
+                                <p className="font-black text-slate-600">{log.time}</p><p className="text-[10px] text-slate-400">{log.date}</p>
+                            </div>
+                        </div>
+                    )) : <p className="text-center text-slate-400 py-10">ไม่พบประวัติการทำงาน</p>}
                 </div>
             </div>
         </div>
@@ -1294,6 +1666,7 @@ const LoginView = ({ setIsLoggedIn, staffs, setCurrentUser, logAdminAction }) =>
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
+    const [showPassword, setShowPassword] = useState(false); // 🌟 สเตตัสสำหรับเปิด/ปิดตาดูรหัส
 
     // ฟังก์ชันตรวจสอบการเข้าสู่ระบบ
     const handleLogin = () => {
@@ -1310,69 +1683,73 @@ const LoginView = ({ setIsLoggedIn, staffs, setCurrentUser, logAdminAction }) =>
     };
 
     return (
-        <div className="max-w-md mx-auto mt-10 bg-white p-8 rounded-3xl shadow-xl border border-blue-100">
+        <div className="max-w-md mx-auto mt-10 bg-white p-8 rounded-3xl shadow-xl border border-emerald-100 animate-in zoom-in duration-300">
             {/* ส่วนหัวของฟอร์ม Login */}
             <div className="text-center mb-8">
-                <div className="bg-blue-100 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 text-blue-600">
+                <div className="bg-emerald-100 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 text-emerald-600 shadow-inner">
                     <LogIn size={32} />
                 </div>
                 <h2 className="font-bold text-2xl text-slate-800">สำหรับเจ้าหน้าที่</h2>
-                <p className="text-slate-500 text-sm">เข้าสู่ระบบเพื่อจัดการข้อมูลเทศบาลตำบลอุโมงค์</p>
+                <p className="text-slate-500 text-sm mt-1">เข้าสู่ระบบเพื่อจัดการข้อมูลธนาคารขยะ</p>
             </div>
 
             {/* ส่วนกรอกข้อมูล */}
             <div className="space-y-4">
                 {/* แสดงข้อความ Error สีแดงเมื่อล็อกอินไม่สำเร็จ */}
-                {error && <div className="bg-red-50 text-red-600 p-3 rounded-xl text-sm text-center font-medium">{error}</div>}
+                {error && <div className="bg-red-50 text-red-600 p-3 rounded-xl text-sm text-center font-bold border border-red-100">{error}</div>}
 
                 <div>
-                    <label className="block text-sm font-medium mb-1 text-slate-600">ชื่อผู้ใช้</label>
-                    {/* 🔐 [เวอร์ชันล็อกปุ่ม]: สกัดกั้นการกด Spacebar ในช่องชื่อผู้ใช้ ป้องกันการพิมพ์เว้นวรรคเกินโดยไม่ตั้งใจ */}
+                    <label className="block text-sm font-bold mb-1 text-slate-600">ชื่อผู้ใช้</label>
                     <input
                         type="text"
-                        className="w-full border rounded-xl px-4 py-3 bg-slate-50 focus:ring-2 ring-blue-100 outline-none transition"
+                        className="w-full border-2 border-slate-100 rounded-xl px-4 py-3 bg-slate-50 focus:border-emerald-400 focus:bg-white outline-none transition-all font-medium text-slate-700"
                         placeholder="admin"
                         value={username}
                         onKeyDown={(e) => {
-                            // บล็อกปุ่ม Spacebar (e.key === ' ' หรือเว้นวรรค) ไม่ให้ทำงานในช่องนี้
-                            if (e.key === ' ') {
-                                e.preventDefault();
-                            }
+                            if (e.key === ' ') e.preventDefault();
+                            if (e.key === 'Enter') handleLogin(); // 🌟 กด Enter เพื่อรันฟังก์ชันล็อกอิน
                         }}
                         onChange={(e) => {
-                            // ดักจับอีกชั้น: สั่งลบเว้นวรรคทิ้งทันทีหากมีการก๊อปปี้ข้อความที่มีเว้นวรรคมาวาง (Paste)
                             setUsername(e.target.value.replace(/\s/g, ''));
                         }}
                     />
                 </div>
                 <div>
-                    <label className="block text-sm font-medium mb-1 text-slate-600">รหัสผ่าน</label>
-                    {/* 🔐 [เวอร์ชันล็อกปุ่ม]: สกัดกั้นการกด Spacebar ในช่องรหัสผ่าน เพื่อป้องกันการพิมพ์วรรคเกินโดยไม่ตั้งใจ */}
-                    <input
-                        type="password"
-                        className="w-full border rounded-xl px-4 py-3 bg-slate-50 focus:ring-2 ring-blue-100 outline-none transition"
-                        placeholder="••••••••"
-                        value={password}
-                        onKeyDown={(e) => {
-                            // บล็อกปุ่ม Spacebar ไม่ให้สามารถกดเว้นวรรคได้ในช่องรหัสผ่านนี้
-                            if (e.key === ' ') {
-                                e.preventDefault();
-                            }
-                        }}
-                        onChange={(e) => {
-                            // ดักจับอีกชั้น: สั่งลบเว้นวรรคทิ้งทันทีหากมีการก๊อปปี้รหัสผ่านที่มีเว้นวรรคติดมาวาง (Paste)
-                            setPassword(e.target.value.replace(/\s/g, ''));
-                        }}
-                    />
+                    <label className="block text-sm font-bold mb-1 text-slate-600">รหัสผ่าน</label>
+                    <div className="relative">
+                        <input
+                            type={showPassword ? "text" : "password"} // 🌟 สลับชนิดของ input ตามการกดปุ่มตา
+                            className="w-full border-2 border-slate-100 rounded-xl pl-4 pr-12 py-3 bg-slate-50 focus:border-emerald-400 focus:bg-white outline-none transition-all font-medium text-slate-700"
+                            placeholder="••••••••"
+                            value={password}
+                            onKeyDown={(e) => {
+                                if (e.key === ' ') e.preventDefault();
+                                if (e.key === 'Enter') handleLogin(); // 🌟 กด Enter เพื่อรันฟังก์ชันล็อกอิน
+                            }}
+                            onChange={(e) => {
+                                setPassword(e.target.value.replace(/\s/g, ''));
+                            }}
+                        />
+                        {/* 🌟 ปุ่มรูปตาสำหรับดูรหัสผ่าน */}
+                        <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-emerald-600 transition-colors focus:outline-none p-1"
+                        >
+                            {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                        </button>
+                    </div>
                 </div>
 
                 {/* ปุ่มกดยืนยันการเข้าสู่ระบบ */}
-                <button
-                    onClick={handleLogin}
-                    className="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold hover:bg-blue-700 shadow-lg shadow-blue-200 transition"
-                >
-                    เข้าสู่ระบบ
-                </button>
+                <div className="pt-2">
+                    <button
+                        onClick={handleLogin}
+                        className="w-full bg-emerald-600 text-white py-4 rounded-2xl font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-200 transition-all active:scale-[0.98]"
+                    >
+                        เข้าสู่ระบบ
+                    </button>
+                </div>
             </div>
         </div>
     );
@@ -1447,7 +1824,17 @@ const AdminPanel = ({
                     <h3 className="font-bold text-lg text-slate-800">แก้ไขราคารับซื้อขยะ</h3>
                     <p className="text-sm text-slate-500">ปรับเปลี่ยนมูลค่าราคากลางขยะ 5 ประเภทประจำเดือน</p>
                 </button>
-
+                {/* ปุ่มจัดการยอดเงินสมาชิก */}
+                <button
+                    onClick={() => setCurrentPage('manageBalance')}
+                    className="bg-white p-6 rounded-2xl border-2 border-transparent hover:border-emerald-500 transition-all shadow-sm text-left group"
+                >
+                    <div className="bg-emerald-100 text-emerald-600 w-12 h-12 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition">
+                        <Wallet size={24} />
+                    </div>
+                    <h3 className="font-bold text-lg text-slate-800">จัดการยอดเงินสมาชิก</h3>
+                    <p className="text-sm text-slate-500">แก้ไขยอดเงินคงเหลือของครัวเรือนรายหมวดแบบเร่งด่วน</p>
+                </button>
                 {/* ปุ่มดูประวัติรายบ้าน */}
                 <button onClick={() => setCurrentPage('history')} className="bg-white p-6 rounded-2xl border-2 border-transparent hover:border-purple-500 transition-all shadow-sm text-left group">
                     <div className="bg-purple-100 text-purple-600 w-12 h-12 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition">
@@ -1467,7 +1854,6 @@ const AdminPanel = ({
                 </button>
             </div>
 
-            {/* หน้าต่างลงทะเบียนสมาชิกอันเดิมของน้า */}
             {isAddMemberOpen && tempLocation && (
                 <AddMemberModal
                     lat={tempLocation.lat}
@@ -1501,13 +1887,19 @@ const AdminPanel = ({
 const VillageDetailsModal = ({ village, onClose, villages, members }) => {
     if (!village) return null;
 
+    // 🌟 สเตตัสสำหรับช่องค้นหาบ้านเลขที่ในหมวด (เผื่ออนาคตคนเยอะ)
+    const [searchHouse, setSearchHouse] = useState('');
+
     const latestVillage = villages?.find(v => Number(v.id) === Number(village?.id)) || village;
 
-
-    // 🔄 [แก้ไขจุดคัดกรอง]: บังคับกรองด้วย ID ตัวเลขเท่านั้น เพื่อความแม่นยำสูงสุด ไม่ให้ดึงข้ามหมวด
+    // 🔄 กรองสมาชิก และรองรับการค้นหา
     const villageMembers = members
         ? members.filter(m => Number(m.villageId) === Number(latestVillage.id))
         : [];
+
+    const filteredMembers = villageMembers.filter(m =>
+        String(m.houseNo).toLowerCase().includes(searchHouse.toLowerCase())
+    );
 
     const aggregatedWaste = villageMembers.reduce((acc, m) => {
         const data = m.wasteData || {};
@@ -1517,72 +1909,129 @@ const VillageDetailsModal = ({ village, onClose, villages, members }) => {
         return acc;
     }, { 'พลาสติก': 0, 'กระดาษ': 0, 'แก้ว': 0, 'อลูมิเนียม': 0, 'โลหะผสม': 0 });
 
-    // 🔧 [สูตรคำนวณแยกหมวดเด็ดขาด] (ของน้าอันเดิมก็ดีอยู่แล้วครับ)
-    const correctVillageTotalCredit = villageMembers.reduce((sum, m) => sum + (Number(m.credit) || 0), 0);
+    // 🌟 คำนวณยอดเงินรวม (balance) และคาร์บอน ของหมวด
+    const totalVillageBalance = villageMembers.reduce((sum, m) => sum + (Number(m.balance) || 0), 0);
+    const totalVillageCarbon = villageMembers.reduce((sum, m) => sum + (Number(m.credit) || 0), 0);
+
     return (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-            <div className="bg-white rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden animate-in zoom-in duration-200 text-slate-700">
+            <div className="bg-white rounded-[28px] w-full max-w-2xl shadow-2xl overflow-hidden animate-in zoom-in duration-300 text-slate-700 flex flex-col max-h-[90vh]">
 
-                {/* ส่วนหัว (Header) สีน้ำเงิน พร้อมชื่อหมวด */}
-                <div className="p-6 border-b bg-blue-600 text-white flex justify-between items-center">
-                    <div>
-                        <h3 className="font-bold text-xl">🏠 {latestVillage.name}</h3>
-                        <p className="text-xs opacity-90 mt-1">จำนวนครัวเรือนในหมวดนี้: {villageMembers.length} หลังคาเรือน</p>
+                {/* ส่วนหัว (Header) สีเขียวมรกต */}
+                <div className="p-6 bg-emerald-600 text-white flex justify-between items-center shrink-0 shadow-sm relative overflow-hidden">
+                    {/* ลายกราฟิกจางๆ */}
+                    <div className="absolute right-0 top-0 opacity-10 pointer-events-none">
+                        <TrendingUp size={120} className="-mt-4 -mr-4" />
                     </div>
-                    {/* ปุ่มปิดหน้าต่าง (กากบาท) */}
-                    <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-full transition">
-                        <X size={24} />
+
+                    <div className="relative z-10">
+                        <h3 className="font-black text-2xl drop-shadow-md">🏠 {latestVillage.name}</h3>
+                        <p className="text-emerald-100 text-sm font-medium mt-1 flex items-center gap-2">
+                            <Users size={14} /> จำนวน: {villageMembers.length} หลังคาเรือน
+                        </p>
+                    </div>
+                    <button onClick={onClose} className="p-2 bg-black/10 hover:bg-black/20 rounded-full transition relative z-10 backdrop-blur-md text-white">
+                        <X size={20} />
                     </button>
                 </div>
 
-                {/* ส่วนเนื้อหาหลัก: แสดงน้ำหนักขยะแยก 5 ประเภท */}
-                <div className="p-8">
-                    <h4 className="font-bold text-slate-800 mb-6">📊 รายละเอียดประเภทขยะ</h4>
+                {/* ส่วนเนื้อหาหลัก (Content) แบบเลื่อนได้ */}
+                <div className="p-8 overflow-y-auto scrollbar-thin scrollbar-thumb-emerald-200">
+
+                    {/* แสดงน้ำหนักขยะแยก 5 ประเภท */}
+                    <h4 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                        <Database size={18} className="text-emerald-500" /> ปริมาณขยะแยกประเภท (กก.)
+                    </h4>
                     <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
                         {['พลาสติก', 'กระดาษ', 'แก้ว', 'อลูมิเนียม', 'โลหะผสม'].map(type => (
-                            <div key={type} className="bg-slate-50 p-4 rounded-2xl border border-slate-100 shadow-sm text-center">
-                                <p className="text-[10px] text-slate-500 uppercase font-bold mb-1">{type}</p>
+                            <div key={type} className="bg-slate-50 p-4 rounded-2xl border border-slate-100 shadow-sm text-center hover:border-emerald-200 hover:shadow-md transition-all">
+                                <p className="text-[10px] text-slate-500 font-black mb-1.5">{type}</p>
                                 <div className="flex flex-col items-center">
-                                    <span className="text-xl font-black text-blue-600">
+                                    <span className="text-xl font-black text-slate-700">
                                         {Number(aggregatedWaste[type] || 0).toLocaleString()}
                                     </span>
-                                    <span className="text-[10px] text-slate-400 font-bold uppercase">กก.</span>
                                 </div>
                             </div>
                         ))}
                     </div>
 
-                    {/* 📋 ส่วนที่แสดงรายชื่อบ้านภายในหมวดนั้นๆ */}
-                    <div className="mt-6 border-t pt-4">
-                        <h4 className="text-sm font-bold text-slate-500 mb-3">📋 บัญชีรายชื่อบ้านภายในหมวด</h4>
-                        <div className="max-h-40 overflow-y-auto space-y-2 bg-slate-50 p-3 rounded-2xl border border-slate-100">
-                            {villageMembers.length > 0 ? (
-                                villageMembers.map((m, idx) => (
-                                    <div key={m.id} className="flex justify-between items-center text-xs font-bold text-slate-600 bg-white p-2.5 rounded-xl border border-slate-100 shadow-sm">
-                                        <span>{idx + 1}. บ้านเลขที่ {m.houseNo}</span>
-                                        <span className="text-amber-500 font-mono">🪙 {(m.credit || 0).toLocaleString()} แต้ม</span>
-                                    </div>
-                                ))
+                    {/* 📋 บัญชีรายชื่อ (พร้อมช่องค้นหา & Scrollbar ป้องกันล้น) */}
+                    <div className="mt-8 border-t border-slate-100 pt-6">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                            <h4 className="text-sm font-bold text-slate-600 flex items-center gap-2">
+                                <Users size={16} className="text-slate-400" /> บัญชีรายชื่อบ้านภายในหมวด
+                            </h4>
+                            {/* 🌟 ช่องค้นหาเพื่อแก้ปัญหาคนเยอะในอนาคต */}
+                            <div className="relative">
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs">🔍</span>
+                                <input
+                                    type="text"
+                                    placeholder="ค้นหาบ้านเลขที่..."
+                                    value={searchHouse}
+                                    onChange={(e) => setSearchHouse(e.target.value)}
+                                    className="pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:border-emerald-400 w-full sm:w-40"
+                                />
+                            </div>
+                        </div>
+
+                        {/* 🌟 กล่องรายชื่อจำกัดความสูง (max-h-48) มี Scrollbar ในตัว */}
+                        <div className="max-h-48 overflow-y-auto pr-2 space-y-2 scrollbar-thin scrollbar-thumb-slate-200">
+                            {filteredMembers.length > 0 ? (
+                                filteredMembers.map((m, idx) => {
+                                    const mBalance = Number(m.balance) || 0;
+                                    const mCarbon = Number(m.credit) || 0;
+
+                                    return (
+                                        <div key={m.id} className="flex flex-col sm:flex-row sm:justify-between sm:items-center p-3 bg-slate-50 hover:bg-emerald-50/50 rounded-xl border border-slate-100 transition-colors gap-2">
+                                            <span className="text-xs font-bold text-slate-700 flex items-center gap-2">
+                                                <span className="bg-slate-200 text-slate-500 w-5 h-5 rounded-full flex items-center justify-center text-[9px]">{idx + 1}</span>
+                                                บ้านเลขที่ {m.houseNo}
+                                            </span>
+
+                                            <div className="flex items-center gap-3 self-end sm:self-auto">
+                                                {/* 🌟 โชว์คาร์บอนและยอดเงินรายบุคคล */}
+                                                <span className="text-[10px] font-bold text-emerald-600 bg-emerald-100/50 px-2 py-0.5 rounded-lg">
+                                                    🌱 {mCarbon.toFixed(4)} kgCO2e
+                                                </span>
+                                                <span className="text-xs font-black text-amber-600">
+                                                    ฿{mBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    )
+                                })
                             ) : (
-                                <p className="text-xs text-slate-400 italic text-center py-4">ยังไม่มีสมาชิกขึ้นทะเบียนในหมวดนี้</p>
+                                <div className="text-center py-6 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                                    <p className="text-xs text-slate-400 font-bold">ไม่พบข้อมูลสมาชิกที่ค้นหา</p>
+                                </div>
                             )}
                         </div>
                     </div>
 
-                    {/* กล่องสรุปเครดิตสะสมด้านล่าง */}
-                    <div className="mt-6 bg-blue-50 p-4 rounded-2xl flex justify-between items-center border border-blue-100">
-                        <span className="font-bold text-blue-800 text-sm">เครดิตสะสมรวมทั้งหมวด :</span>
-                        <span className="text-xl font-black text-blue-600 font-mono">
-                            {/* ✨ นับแต้มผลรวมของคนข้างในหมวดมาโชว์ตรง ๆ ตัดขาดจากระบบแต้มส่วนกลาง */}
-                            {villageMembers.reduce((sum, m) => sum + (Number(m.credit) || 0), 0).toLocaleString()} 🪙
-                        </span>
+                    {/* 🌟 กล่องสรุปผลรวม (เงิน & คาร์บอน) */}
+                    <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="bg-emerald-50/70 p-5 rounded-2xl border border-emerald-100 flex flex-col items-center justify-center text-center shadow-sm">
+                            <span className="font-bold text-emerald-600 text-xs mb-1 flex items-center gap-1"><Leaf size={14} /> ลดคาร์บอนรวม</span>
+                            <span className="text-xl font-black text-emerald-700 font-mono">
+                                {totalVillageCarbon.toLocaleString(undefined, { minimumFractionDigits: 4, maximumFractionDigits: 4 })}
+                            </span>
+                            <span className="text-[9px] font-bold text-emerald-500 uppercase mt-0.5">kgCO2e</span>
+                        </div>
+
+                        <div className="bg-amber-50 p-5 rounded-2xl border border-amber-200/60 flex flex-col items-center justify-center text-center shadow-sm relative overflow-hidden">
+                            <div className="absolute -right-4 -bottom-4 opacity-10"><Wallet size={80} className="text-amber-500" /></div>
+                            <span className="font-bold text-amber-700 text-xs mb-1 relative z-10 flex items-center gap-1"><Wallet size={14} /> ยอดเงินออมรวม</span>
+                            <span className="text-2xl font-black text-amber-600 font-mono relative z-10">
+                                ฿{totalVillageBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </span>
+                        </div>
                     </div>
                 </div>
 
-                {/* ส่วนท้าย (Footer): ปุ่มปิดหน้าต่างแบบใหญ่ */}
-                <div className="p-6 bg-slate-50 border-t text-center">
-                    <button onClick={onClose} className="w-full py-3 bg-white border border-slate-200 text-slate-600 rounded-2xl font-bold hover:bg-slate-100 transition shadow-sm">
-                        ปิดหน้าต่าง
+                {/* ส่วนท้าย (Footer) */}
+                <div className="p-6 bg-white border-t border-slate-100 text-center shrink-0">
+                    <button onClick={onClose} className="w-full py-4 bg-slate-800 text-white rounded-2xl font-bold hover:bg-slate-900 transition shadow-lg active:scale-[0.98]">
+                        ปิดหน้าต่างสถิติ
                     </button>
                 </div>
             </div>
@@ -1590,16 +2039,16 @@ const VillageDetailsModal = ({ village, onClose, villages, members }) => {
     );
 };
 // === หน้าจอรายการหมวดทั้ง 9 (VillagesView) ===
-// แสดงการ์ดสรุปข้อมูลของแต่ละหมวด เช่น น้ำหนักขยะรวม, ค่าการลดคาร์บอน และเครดิต
+// แสดงการ์ดสรุปข้อมูลของแต่ละหมวด เช่น น้ำหนักขยะรวม, ค่าการลดคาร์บอน และยอดเงิน
 const VillagesView = ({ villageData, setSelectedVillage, setCurrentPage, isLoggedIn, setEditingVillage }) => {
     // สูตรคำนวณคาร์บอน (Factor อ้างอิงจาก อบก.)
     const calculateCarbon = (wasteData) => {
         const FACTORS = {
-            'พลาสติก': 1.03,
-            'กระดาษ': 0.85,
-            'แก้ว': 0.25,
-            'อลูมิเนียม': 9.13,
-            'โลหะผสม': 1.21
+            'พลาสติก': 1.0310,
+            'กระดาษ': 5.6735,     // มาจาก 3.5460 + 2.1275
+            'แก้ว': 0.2760,
+            'อลูมิเนียม': 9.1270,
+            'โลหะผสม': 4.3910
         };
         return Object.entries(wasteData || {}).reduce((total, [type, weight]) => {
             return total + (Number(weight) * (FACTORS[type] || 0));
@@ -1607,82 +2056,104 @@ const VillagesView = ({ villageData, setSelectedVillage, setCurrentPage, isLogge
     };
 
     return (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 animate-in fade-in duration-500">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 animate-in fade-in duration-500">
             {villageData.map((v) => {
-                const totalWaste = v.wasteData ? Object.values(v.wasteData).reduce((a, b) => a + Number(b), 0) : 0;
+                const totalWaste = v.totalWaste || 0;
                 const carbonReduced = calculateCarbon(v.wasteData);
+                const totalBalance = v.totalBalance || 0; // 🌟 ดึงยอดเงินรวมของหมวดมาใช้
 
                 return (
-                    <div key={v.id} className="bg-white p-6 rounded-3xl border border-slate-100 hover:border-blue-300 transition-all group shadow-sm flex flex-col relative overflow-hidden">
-                        {/* แถบสีข้างหมวด */}
-                        <div className="absolute top-0 left-0 w-2 h-full bg-blue-600"></div>
+                    <div
+                        key={v.id}
+                        className="bg-white rounded-[24px] p-6 border-2 border-emerald-100/60 shadow-[0_2px_10px_-4px_rgba(16,185,129,0.1)] hover:shadow-xl hover:-translate-y-1 hover:border-emerald-200 transition-all duration-300 flex flex-col relative overflow-hidden group"
+                    >
+                        {/* ลวดลายตกแต่งมุมขวาบน (ลายวงกต/รังผึ้งจางๆ) */}
+                        <div className="absolute -right-6 -top-6 w-32 h-32 opacity-[0.03] group-hover:opacity-10 transition-opacity duration-500 pointer-events-none">
+                            <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M50 0L93.3013 25V75L50 100L6.69873 75V25L50 0Z" stroke="#059669" strokeWidth="2" />
+                                <path d="M50 20L75.9808 35V65L50 80L24.0192 65V35L50 20Z" stroke="#059669" strokeWidth="2" />
+                            </svg>
+                        </div>
 
-                        <div className="flex justify-between items-start mb-4">
+                        {/* ส่วนหัวของการ์ด */}
+                        <div className="flex justify-between items-start mb-6 relative z-10">
                             <div>
-                                <h3 className="font-black text-2xl text-blue-900">{v.name}</h3>
-                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest"> หมู่ 6 ต.อุโมงค์</p>
+                                <h3 className="font-black text-2xl text-slate-800">{v.name}</h3>
+                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">หมู่ 6 ต.อุโมงค์</p>
                             </div>
-                            <div className="bg-emerald-50 text-emerald-600 text-[10px] px-3 py-1 rounded-full font-black flex items-center gap-1 border border-emerald-100">
-                                <Leaf size={10} /> ECO ACTIVE
-                            </div>
-                        </div>
-
-                        <div className="space-y-3 text-sm text-slate-600 mb-6 flex-grow">
-                            <div className="flex justify-between items-center bg-slate-50 p-2 rounded-xl">
-                                <span className="text-xs font-bold text-slate-500">น้ำหนักขยะรวม:</span>
-                                <span className="font-black text-blue-600 text-lg">
-                                    {v.totalWaste.toLocaleString()} <small className="text-[10px] text-slate-400">กก.</small>
-                                </span>
-                            </div>
-
-                            <div className="flex justify-between items-center px-2">
-                                <span className="text-xs font-bold text-slate-500 flex items-center gap-1">
-                                    <Leaf size={14} className="text-emerald-500" /> ลดคาร์บอนได้:
-                                </span>
-                                <span className="font-bold text-emerald-600">
-                                    {carbonReduced.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                    <small className="text-[10px] ml-1">kgCO2e</small>
-                                </span>
-                            </div>
-
-                            <div className="flex justify-between items-center px-2 border-t border-dashed pt-2">
-                                <span className="text-xs font-bold text-slate-500">เครดิตหมวด:</span>
-                                <span className="font-bold text-amber-500">
-                                    {/* ✨ ดึงแต้มรวมจากโครงสร้าง v.credit โดยตรงเพื่อตัดปัญหา ReferenceError แจ้งตัวแปรไม่นิยาม */}
-                                    {Math.max(0, v.credit).toLocaleString()} 🪙
-                                </span>
+                            <div className="bg-emerald-50 text-emerald-600 text-[10px] px-3 py-1.5 rounded-full font-black flex items-center gap-1.5 border border-emerald-100">
+                                <Leaf size={12} /> ECO ACTIVE
                             </div>
                         </div>
 
-                        <div className="flex flex-col gap-2">
+                        {/* ส่วนข้อมูล (Data Rows) */}
+                        <div className="space-y-4 mb-6 relative z-10 flex-grow text-sm">
+
+                            {/* 1. น้ำหนักขยะรวม */}
+                            <div className="flex justify-between items-center pb-3 border-b border-slate-50">
+                                <span className="font-bold text-slate-500">น้ำหนักขยะรวม:</span>
+                                <div className="text-right">
+                                    <span className="font-black text-slate-700 text-lg">{totalWaste.toLocaleString()}</span>
+                                    <span className="text-xs font-bold text-slate-400 ml-1">กก.</span>
+                                </div>
+                            </div>
+
+                            {/* 2. ลดคาร์บอนได้ */}
+                            <div className="flex justify-between items-center pb-3 border-b border-slate-50">
+                                <span className="font-bold text-emerald-600 flex items-center gap-1.5">
+                                    <Leaf size={14} /> ลดคาร์บอนได้:
+                                </span>
+                                <div className="text-right flex items-baseline gap-1">
+                                    <span className="font-black text-emerald-600 text-lg">
+                                        {carbonReduced.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    </span>
+                                    <span className="text-[10px] font-bold text-emerald-500 uppercase">kgCO2e</span>
+                                </div>
+                            </div>
+
+                            {/* 🌟 3. ยอดเงินรวม (เปลี่ยนจากเครดิต) */}
+                            <div className="flex justify-between items-center pt-1">
+                                <span className="font-bold text-amber-600 flex items-center gap-1.5">
+                                    <Wallet size={14} /> ยอดเงินรวม:
+                                </span>
+                                <div className="text-right flex items-center gap-1.5">
+                                    <span className="font-black text-amber-500 text-lg">
+                                        {totalBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    </span>
+                                    <span className="bg-amber-100 text-amber-600 text-[9px] w-4 h-4 rounded-full flex items-center justify-center font-black">
+                                        ฿
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* ส่วนปุ่มกดด้านล่าง */}
+                        <div className="flex flex-col gap-2 relative z-10 mt-auto">
                             {isLoggedIn && (
                                 <button
                                     onClick={() => setEditingVillage(v)}
-                                    className="w-full bg-blue-600 text-white py-3 rounded-2xl flex items-center justify-center gap-2 hover:bg-blue-700 transition-all font-bold shadow-lg shadow-blue-100"
+                                    className="w-full bg-emerald-500 hover:bg-emerald-600 text-white py-3 rounded-xl flex items-center justify-center gap-2 transition-all font-bold shadow-md shadow-emerald-100 text-sm"
                                 >
-                                    <FileSpreadsheet size={18} /> บันทึกข้อมูลหมวด
+                                    <FileSpreadsheet size={16} /> บันทึกข้อมูลหมวด
                                 </button>
                             )}
 
-                            <div className="grid grid-cols-2 gap-2">
+                            <div className="grid grid-cols-2 gap-3">
                                 <button
                                     onClick={() => {
-                                        localStorage.setItem('active_sort_zone', v.id); // สั่งจำไอดีหมวดที่คลิกเลือก
-                                        setCurrentPage('members'); // ดีดหน้าจอไปคลังรายชื่อสมาชิก
+                                        localStorage.setItem('active_sort_zone', v.id);
+                                        setCurrentPage('members');
                                     }}
-                                    className="py-3 bg-slate-100 text-slate-600 rounded-2xl flex items-center justify-center gap-2 hover:bg-slate-200 transition font-bold text-xs"
+                                    className="py-3 bg-white border-2 border-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center gap-2 hover:bg-emerald-50 hover:border-emerald-100 transition-all font-bold text-xs shadow-sm"
                                 >
-                                    <Users size={16} /> สมาชิก
+                                    <Users size={15} /> สมาชิก
                                 </button>
                                 <button
                                     type="button"
-                                    onClick={() => {
-                                        setSelectedVillage(v);
-
-                                    }}
-                                    className="py-3 bg-slate-100 text-slate-600 rounded-2xl flex items-center justify-center gap-2 hover:bg-slate-200 transition font-bold text-xs"
+                                    onClick={() => setSelectedVillage(v)}
+                                    className="py-3 bg-white border-2 border-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center gap-2 hover:bg-emerald-50 hover:border-emerald-100 transition-all font-bold text-xs shadow-sm"
                                 >
-                                    <TrendingUp size={16} /> สถิติ
+                                    <TrendingUp size={15} /> สถิติ
                                 </button>
                             </div>
                         </div>
@@ -1692,13 +2163,7 @@ const VillagesView = ({ villageData, setSelectedVillage, setCurrentPage, isLogge
         </div>
     );
 };
-// คำนวณสวัสดิการรายบ้าน
-const WELFARE_TIERS = [
-    { min: 0, max: 100, reward: "ยังไม่ได้รับสวัสดิการ" },
-    { min: 101, max: 500, reward: "คูปองส่วนลดร้านค้าชุมชน" },
-    { min: 501, max: 1000, reward: "ส่วนลดค่าธรรมเนียมขยะรายปี" },
-    { min: 1001, reward: "สิทธิ์เบิกค่ารักษาพยาบาลฉุกเฉิน" }
-];
+
 // === หน้าต่างแก้ไขข้อมูลหมวด (EditVillageModal) ===
 // ใช้สำหรับแอดมินในการแก้ไขชื่อหมวด บันทึกน้ำหนักขยะ และลบสมาชิกในหมวด
 const EditVillageModal = ({ village, onClose, onSave, members, onDeleteMember }) => {
@@ -1722,7 +2187,7 @@ const EditVillageModal = ({ village, onClose, onSave, members, onDeleteMember })
                 {/* Header */}
                 <div className="p-6 border-b bg-slate-50 flex justify-between items-center">
                     <div className="flex-grow mr-4">
-                        <label className="text-[10px] text-blue-500 font-bold uppercase tracking-wider mb-1 block">แก้ไขชื่อหมู่บ้าน/ชุมชน</label>
+                        <label className="text-[10px] text-emerald-500 font-bold uppercase tracking-wider mb-1 block">แก้ไขชื่อหมู่บ้าน/ชุมชน</label>
                         <input
                             type="text"
                             value={editName}
@@ -1740,7 +2205,7 @@ const EditVillageModal = ({ village, onClose, onSave, members, onDeleteMember })
                     {/* ส่วนที่ 1: ขยะ */}
                     <div>
                         <h4 className="font-bold text-slate-800 mb-3 flex items-center gap-2">
-                            <Database size={18} className="text-blue-500" /> ข้อมูลขยะแยกประเภท
+                            <Database size={18} className="text-emerald-500" /> ข้อมูลขยะแยกประเภท
                         </h4>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             {['พลาสติก', 'กระดาษ', 'แก้ว', 'อลูมิเนียม', 'โลหะผสม'].map((type) => (
@@ -1774,28 +2239,35 @@ const EditVillageModal = ({ village, onClose, onSave, members, onDeleteMember })
                     {/* ส่วนที่ 2: รายชื่อสมาชิกประจำหมวด */}
                     <div className="space-y-2">
                         {villageMembers.map(m => {
-                            // 1. เปลี่ยนจาก ( เป็น { เพื่อเปิดบล็อกคำสั่ง
-                            // 2. แทรก Logic คำนวณตรงนี้
-                            const credit = Number(m.credit) || 0;
-                            const welfare = WELFARE_TIERS.find(t =>
-                                credit >= t.min && (t.max === undefined || credit <= t.max)
-                            );
-
+                            // 🌟 1. ดึงข้อมูลใหม่มาใช้งาน (เงินบาท, คาร์บอน, และปุ่มติ๊กสวัสดิการ)
+                            const carbonCredit = Number(m.credit) || 0;
+                            const balance = Number(m.balance) || 0;
+                            const hasWelfare = m.hasWelfare || false;
                             // 3. ต้องมีคำสั่ง return ตามมาครับ
                             return (
                                 <div key={m.id} className="flex items-center justify-between p-3 bg-slate-50 border rounded-2xl">
                                     <div>
                                         <p className="font-bold text-slate-800 text-sm">🏠 บ้านเลขที่ {m.houseNo}</p>
-                                        <p className="text-[10px] text-slate-500">ID: {m.id} | เครดิต: {credit.toLocaleString()} 🪙</p>
+                                        {/* 🌟 2. อัปเดตข้อมูลที่โชว์ให้เป็น ยอดเงิน และ คาร์บอน */}
+                                        <p className="text-[10px] text-slate-500 mt-1 flex items-center gap-2">
+                                            <span className="font-mono bg-white px-1.5 py-0.5 rounded border">ID: {m.id}</span>
+                                            <span className="text-amber-600 font-bold">ยอดเงิน: ฿{balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                            <span className="text-emerald-600 font-bold">คาร์บอน: {carbonCredit.toFixed(4)} kgCO2e</span>
+                                        </p>
                                     </div>
 
-                                    <div className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-[10px] font-bold">
-                                        {welfare ? welfare.reward : "ไม่มีข้อมูล"}
+                                    {/* 🌟 3. ป้ายสวัสดิการเปลี่ยนมาดึงค่า True/False ของสมาชิกแต่ละคน */}
+                                    <div className={`px-3 py-1 rounded-full text-[10px] font-bold border ${hasWelfare ? 'bg-amber-100 text-amber-700 border-amber-200' : 'bg-slate-100 text-slate-400 border-slate-200'}`}>
+                                        {hasWelfare ? '🎁 ได้สิทธิ์สวัสดิการ' : 'ไม่มีสิทธิ์'}
                                     </div>
 
                                     <button
-                                        onClick={() => onDeleteMember(m.id)}
-                                        className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition"
+                                        onClick={() => {
+                                            if (window.confirm(`ยืนยันการลบข้อมูลบ้านเลขที่ ${m.houseNo}?`)) {
+                                                onDeleteMember(m.id);
+                                            }
+                                        }}
+                                        className="p-2 text-red-400 hover:bg-red-50 hover:text-red-600 rounded-lg transition"
                                     >
                                         <X size={16} />
                                     </button>
@@ -1807,8 +2279,8 @@ const EditVillageModal = ({ village, onClose, onSave, members, onDeleteMember })
 
                 {/* Footer */}
                 <div className="p-6 bg-slate-50 border-t flex gap-3">
-                    <button onClick={onClose} className="flex-1 py-3 font-bold text-slate-500 transition">
-                        ปิดหน้าต่าง
+                    <button onClick={onClose} className="flex-1 py-3 font-bold text-slate-500 hover:text-slate-700 transition">
+                        ยกเลิก
                     </button>
                     <button
                         onClick={() => {
@@ -1820,21 +2292,32 @@ const EditVillageModal = ({ village, onClose, onSave, members, onDeleteMember })
                                 'โลหะผสม': Number(wasteWeights?.['โลหะผสม'] || 0)
                             };
 
-                            const totalCredit = Object.values(finalWasteData).reduce((sum, weight) => sum + (weight * 10), 0);
+                            // 🌟 แก้ไขจุดอันตราย! เปลี่ยนตัวคูณจาก 10 ให้กลายเป็นสูตรคาร์บอนใหม่
+                            const CARBON_MULTIPLIERS = {
+                                'พลาสติก': 1.0310,
+                                'กระดาษ': 5.6735,
+                                'แก้ว': 0.2760,
+                                'อลูมิเนียม': 9.1270,
+                                'โลหะผสม': 4.3910
+                            };
+
+                            const totalCarbonCredit = Object.entries(finalWasteData).reduce((sum, [type, weight]) => {
+                                return sum + (weight * (CARBON_MULTIPLIERS[type] || 0));
+                            }, 0);
 
                             const updatedData = {
                                 ...village,
                                 name: editName,
                                 wasteData: finalWasteData,
-                                credit: totalCredit
+                                credit: Number(totalCarbonCredit.toFixed(4)) // บันทึกเป็นคาร์บอนเครดิต
                             };
 
                             onSave(updatedData);
                             onClose();
                         }}
-                        className="flex-1 py-3 bg-blue-600 text-white rounded-2xl font-bold shadow-lg hover:bg-blue-700 transition"
+                        className="flex-[2] py-3 bg-emerald-500 text-white rounded-2xl font-bold shadow-lg hover:bg-emerald-600 transition"
                     >
-                        บันทึกข้อมูลหลัก
+                        💾 บันทึกข้อมูลหมวด
                     </button>
                 </div>
             </div>
@@ -1842,27 +2325,35 @@ const EditVillageModal = ({ village, onClose, onSave, members, onDeleteMember })
     );
 };
 const AddMemberModal = ({ initialLat, initialLng, villageData, onSave, onClose }) => {
-    // 1. สร้าง State สำหรับเก็บข้อมูลสมาชิกใหม่
+    // 1. สร้าง State สำหรับเก็บข้อมูลสมาชิกใหม่ (เพิ่ม balance และ hasWelfare)
     const [newMember, setNewMember] = useState({
         id: Date.now(),
         houseNo: '',
         villageId: villageData[0]?.id || 1,
         category: villageData[0]?.name || 'หมวดที่ 1',
-        familyMembers: [''], // เก็บรายชื่อสมาชิกทุกคนในบ้าน
+        familyMembers: [''],
         isSorted: false,     // สถานะการคัดแยก 
+        hasWelfare: false,   // 🌟 สถานะสิทธิ์สวัสดิการ (เพิ่มใหม่)
+        balance: 0,          // 🌟 ยอดเงินคงเหลือ (เพิ่มใหม่)
         lat: initialLat,
         lng: initialLng,
-        credit: 0,
+        credit: 0,           // 🌟 เปลี่ยนความหมายจาก "เครดิตสะสม" เป็น "คาร์บอนเครดิต"
         wasteData: { 'พลาสติก': 0, 'กระดาษ': 0, 'แก้ว': 0, 'อลูมิเนียม': 0, 'โลหะผสม': 0 }
     });
 
-    // 2. สเตตัสสำหรับเปิด-ปิดการติ๊กเลือกประเภทขยะตั้งต้น (Checkbox)
+    // 2. สเตตัสสำหรับเปิด-ปิดการติ๊กเลือกประเภทขยะตั้งต้น
     const [selectedWastes, setSelectedWastes] = React.useState({
         'พลาสติก': false, 'กระดาษ': false, 'แก้ว': false, 'อลูมิเนียม': false, 'โลหะผสม': false
     });
 
-    // 3. อัตราตัวคูณเครดิตสะสม (น้ำหนักขยะ 1 กิโลกรัม = 10 เครดิต)
-    const CREDIT_FACTOR = 10;
+    // 3. 🌍 ตัวคูณสำหรับคำนวณคาร์บอนเครดิต (เปลี่ยนใหม่)
+    const CARBON_MULTIPLIERS = {
+        'พลาสติก': 1.0310,
+        'กระดาษ': 5.6735,
+        'แก้ว': 0.2760,
+        'อลูมิเนียม': 9.1270,
+        'โลหะผสม': 4.3910
+    };
 
     const addMemberField = () => {
         setNewMember({ ...newMember, familyMembers: [...newMember.familyMembers, ''] });
@@ -1879,7 +2370,7 @@ const AddMemberModal = ({ initialLat, initialLng, villageData, onSave, onClose }
         setNewMember({ ...newMember, familyMembers: updatedFamily });
     };
 
-    // แผนที่ย่อ (Mini Map) ปักหมุดลากเลื่อนได้
+    // แผนที่ย่อ (Mini Map)
     React.useEffect(() => {
         const L = window.L;
         if (!L) return;
@@ -1915,11 +2406,11 @@ const AddMemberModal = ({ initialLat, initialLng, villageData, onSave, onClose }
         <div className="fixed inset-0 bg-black/70 z-[9999] flex items-center justify-center p-4 backdrop-blur-sm">
             <div className="bg-white rounded-3xl w-full max-w-xl overflow-hidden flex flex-col shadow-2xl max-h-[90vh]">
                 <div className="p-6 bg-blue-600 text-white flex justify-between items-center">
-                    <h3 className="font-bold text-xl flex items-center gap-2">📍 ลงทะเบียนสมาชิกพร้อมปักหมุดพิกัด</h3>
+                    <h3 className="font-bold text-xl flex items-center gap-2">📍 ลงทะเบียนสมาชิก</h3>
                     <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition"><X size={24} /></button>
                 </div>
 
-                <div className="p-6 space-y-5 overflow-y-auto flex-grow text-slate-700">
+                <div className="p-6 space-y-5 overflow-y-auto flex-grow text-slate-700 scrollbar-thin scrollbar-thumb-slate-200">
                     <div className="space-y-2">
                         <div className="flex justify-between items-center">
                             <label className="block text-sm font-bold text-slate-700">🗺️ แผนที่พิกัดบ้าน (ลากหมุดเพื่อปรับความแม่นยำได้)</label>
@@ -1963,8 +2454,26 @@ const AddMemberModal = ({ initialLat, initialLng, villageData, onSave, onClose }
                         </button>
                     </div>
 
+                    {/* 🌟 ส่วนที่เพิ่มใหม่: ยอดเงินคงเหลือ */}
                     <div className="pt-4 border-t border-slate-100">
-                        <label className="block text-sm font-bold mb-3 text-slate-700">📦 ขยะนำฝากตั้งต้น (ติ๊กเลือกประเภทเพื่อบันทึกปริมาณเข้าสู่ระบบ)</label>
+                        <label className="block text-sm font-bold mb-2 text-slate-700">💰 ข้อมูลบัญชีธนาคารขยะ</label>
+                        <div className="flex items-center gap-4">
+                            <div className="flex-1 relative">
+                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">฿</span>
+                                <input
+                                    type="number"
+                                    className="w-full border-2 border-slate-100 pl-10 pr-4 py-3 rounded-xl outline-none bg-slate-50 font-black text-blue-600 focus:border-blue-400"
+                                    value={newMember.balance}
+                                    onChange={e => setNewMember({ ...newMember, balance: parseFloat(e.target.value) || 0 })}
+                                    placeholder="0.00"
+                                />
+                            </div>
+                            <span className="text-sm font-bold text-slate-500">ยอดเงินคงเหลือ</span>
+                        </div>
+                    </div>
+
+                    <div className="pt-4 border-t border-slate-100">
+                        <label className="block text-sm font-bold mb-3 text-slate-700">📦 ขยะนำฝากตั้งต้น (คำนวณคาร์บอนเครดิตอัตโนมัติ)</label>
                         <div className="space-y-3">
                             {Object.keys(newMember.wasteData).map(type => (
                                 <div key={type} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-slate-50 border rounded-2xl gap-2">
@@ -1978,8 +2487,11 @@ const AddMemberModal = ({ initialLat, initialLng, villageData, onSave, onClose }
                                                 const weight = Math.max(0, parseFloat(e.target.value) || 0);
                                                 setNewMember(prev => {
                                                     const updatedWaste = { ...prev.wasteData, [type]: weight };
-                                                    const totalCredit = Object.values(updatedWaste).reduce((sum, w) => sum + (w * CREDIT_FACTOR), 0);
-                                                    return { ...prev, wasteData: updatedWaste, credit: totalCredit };
+                                                    // 🌟 เปลี่ยนสูตรคำนวณ เป็นคาร์บอนเครดิต
+                                                    const totalCarbon = Object.entries(updatedWaste).reduce((sum, [wType, wWeight]) => {
+                                                        return sum + (wWeight * (CARBON_MULTIPLIERS[wType] || 0));
+                                                    }, 0);
+                                                    return { ...prev, wasteData: updatedWaste, credit: Number(totalCarbon.toFixed(4)) };
                                                 });
                                             }} />
                                             <span className="absolute right-3 text-xs text-slate-400 font-bold">กก.</span>
@@ -1989,12 +2501,20 @@ const AddMemberModal = ({ initialLat, initialLng, villageData, onSave, onClose }
                             ))}
                         </div>
                     </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                        <div className="p-4 bg-slate-50 rounded-2xl flex flex-col items-center justify-center border border-dashed text-center gap-2">
+                            <span className="font-bold text-slate-700 text-sm">การคัดแยกประเภทขยะ</span>
+                            <button type="button" onClick={() => setNewMember({ ...newMember, isSorted: !newMember.isSorted })} className={`w-full py-2.5 rounded-xl font-bold text-sm transition-all ${newMember.isSorted ? 'bg-green-500 text-white shadow-md' : 'bg-slate-200 text-slate-500 hover:bg-slate-300'}`}>
+                                {newMember.isSorted ? '✅ คัดแยกแล้ว' : '⚪ ยังไม่คัดแยก'}
+                            </button>
+                        </div>
 
-                    <div className="p-4 bg-slate-50 rounded-2xl flex items-center justify-between border border-dashed">
-                        <span className="font-bold text-slate-700 text-sm">สถานะการคัดแยกประเภทขยะ:</span>
-                        <button type="button" onClick={() => setNewMember({ ...newMember, isSorted: !newMember.isSorted })} className={`px-4 py-2 rounded-full font-bold text-xs transition-all ${newMember.isSorted ? 'bg-green-500 text-white shadow-md' : 'bg-slate-300 text-slate-600'}`}>
-                            {newMember.isSorted ? '✅ คัดแยกประเภทขยะแล้ว' : '⚪ ยังไม่คัดแยกประเภทขยะ'}
-                        </button>
+                        <div className="p-4 bg-slate-50 rounded-2xl flex flex-col items-center justify-center border border-dashed text-center gap-2">
+                            <span className="font-bold text-slate-700 text-sm">สิทธิ์สวัสดิการ</span>
+                            <button type="button" onClick={() => setNewMember({ ...newMember, hasWelfare: !newMember.hasWelfare })} className={`w-full py-2.5 rounded-xl font-bold text-sm transition-all ${newMember.hasWelfare ? 'bg-amber-500 text-white shadow-md' : 'bg-slate-200 text-slate-500 hover:bg-slate-300'}`}>
+                                {newMember.hasWelfare ? '🎁 ได้รับสิทธิ์' : '❌ ยังไม่ได้สิทธิ์'}
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -2018,18 +2538,23 @@ const AddMemberModal = ({ initialLat, initialLng, villageData, onSave, onClose }
 const RecordWasteModal = ({ members, onSave, onClose }) => {
     const [selectedMemberId, setSelectedMemberId] = useState('');
     const [wasteInputs, setWasteInputs] = useState({
-        'พลาสติก': '',
-        'กระดาษ': '',
-        'แก้ว': '',
-        'อลูมิเนียม': '',
-        'โลหะผสม': ''
+        'พลาสติก': '', 'กระดาษ': '', 'แก้ว': '', 'อลูมิเนียม': '', 'โลหะผสม': ''
     });
 
-    const CREDIT_FACTOR = 10;
+    // 🌍 สูตรคำนวณคาร์บอนเครดิตใหม่
+    const CARBON_MULTIPLIERS = {
+        'พลาสติก': 1.0310,
+        'กระดาษ': 5.6735,
+        'แก้ว': 0.2760,
+        'อลูมิเนียม': 9.1270,
+        'โลหะผสม': 4.3910
+    };
 
-    // คำนวณแต้มที่จะได้รับเพิ่มในรอบนี้แบบเรียลไทม์
-    const currentTurnCredit = useMemo(() => {
-        return Object.values(wasteInputs).reduce((sum, w) => sum + (Number(w) * CREDIT_FACTOR), 0);
+    // คำนวณคาร์บอนเครดิตที่จะได้รับเพิ่มในรอบนี้แบบเรียลไทม์
+    const currentTurnCarbon = useMemo(() => {
+        return Object.entries(wasteInputs).reduce((sum, [type, weight]) => {
+            return sum + (Number(weight || 0) * (CARBON_MULTIPLIERS[type] || 0));
+        }, 0);
     }, [wasteInputs]);
 
     return (
@@ -2039,9 +2564,9 @@ const RecordWasteModal = ({ members, onSave, onClose }) => {
                 <div className="p-6 bg-emerald-600 text-white flex justify-between items-center">
                     <div>
                         <h3 className="font-bold text-xl flex items-center gap-2">⚖️ บันทึกน้ำหนักขยะนำฝากเพิ่ม</h3>
-                        <p className="text-xs text-emerald-100 mt-0.5">เลือกบ้านเลขที่และกรอกน้ำหนักขยะเพื่อคำนวณสะสมแต้ม</p>
+                        <p className="text-xs text-emerald-100 mt-0.5">เลือกบ้านเลขที่และกรอกน้ำหนักเพื่อคำนวณคาร์บอนเครดิต</p>
                     </div>
-                    <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition text-white text-lg">✕</button>
+                    <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition text-white">✕</button>
                 </div>
 
                 {/* ส่วนฟอร์มกรอกข้อมูล */}
@@ -2052,7 +2577,7 @@ const RecordWasteModal = ({ members, onSave, onClose }) => {
                         <select
                             value={selectedMemberId}
                             onChange={(e) => setSelectedMemberId(e.target.value)}
-                            className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none bg-slate-50 font-bold text-slate-700"
+                            className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none bg-slate-50 font-bold text-slate-700 focus:border-emerald-500"
                         >
                             <option value="">-- กรุณาเลือกบ้านเลขที่สมาชิก --</option>
                             {members && members.map(m => (
@@ -2063,9 +2588,9 @@ const RecordWasteModal = ({ members, onSave, onClose }) => {
                         </select>
                     </div>
 
-                    {/* 2. กรอกน้ำหนักแยกประเภทขยะ 5 ชนิด */}
+                    {/* 2. กรอกน้ำหนักแยกประเภทขยะ */}
                     <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-3">
-                        <label className="block text-sm font-bold text-slate-700">📦 ปริมาณน้ำหนักขยะที่นำมาฝากรอบนี้ (กิโลกรัม)</label>
+                        <label className="block text-sm font-bold text-slate-700">📦 ปริมาณน้ำหนักขยะ (กิโลกรัม)</label>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             {['พลาสติก', 'กระดาษ', 'แก้ว', 'อลูมิเนียม', 'โลหะผสม'].map((type) => (
                                 <div key={type} className="flex flex-col gap-1 bg-white p-2.5 rounded-xl border">
@@ -2090,11 +2615,11 @@ const RecordWasteModal = ({ members, onSave, onClose }) => {
                         </div>
                     </div>
 
-                    {/* 3. กล่องโชว์แต้มที่จะได้รับรอบนี้ */}
+                    {/* 3. กล่องโชว์คาร์บอนเครดิตที่จะได้รับ */}
                     <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 flex justify-between items-center shadow-sm">
-                        <span className="font-bold text-emerald-800 text-sm">🪙 แต้มเครดิตที่จะได้รับเพิ่มในรอบนี้:</span>
+                        <span className="font-bold text-emerald-800 text-sm">🌱 คาร์บอนเครดิตที่จะได้รับเพิ่ม:</span>
                         <span className="text-xl font-black text-emerald-600 font-mono">
-                            +{currentTurnCredit.toLocaleString(undefined, { minimumFractionDigits: 2 })} แต้ม
+                            +{currentTurnCarbon.toFixed(4)} kgCO2e
                         </span>
                     </div>
                 </div>
@@ -2106,7 +2631,6 @@ const RecordWasteModal = ({ members, onSave, onClose }) => {
                         type="button"
                         onClick={() => {
                             if (!selectedMemberId) return alert("❌ กรุณาเลือกบ้านเลขที่สมาชิกก่อนบันทึกครับ");
-
                             const hasValues = Object.values(wasteInputs).some(v => Number(v) > 0);
                             if (!hasValues) return alert("❌ กรุณากรอกน้ำหนักขยะอย่างน้อย 1 ประเภทครับ");
 
@@ -2118,11 +2642,12 @@ const RecordWasteModal = ({ members, onSave, onClose }) => {
                                 'โลหะผสม': Number(wasteInputs['โลหะผสม']) || 0
                             };
 
-                            onSave(selectedMemberId, finalTurnWaste, currentTurnCredit);
+                            // ส่งค่าคาร์บอนที่คำนวณได้ออกไป
+                            onSave(selectedMemberId, finalTurnWaste, Number(currentTurnCarbon.toFixed(4)));
                         }}
                         className="flex-[2] bg-emerald-600 text-white py-3.5 rounded-2xl font-bold shadow-lg hover:bg-emerald-700 transition"
                     >
-                        💾 ยืนยันบันทึกยอดขยะสะสม
+                        💾 ยืนยันบันทึกน้ำหนักขยะ
                     </button>
                 </div>
             </div>
@@ -2316,7 +2841,15 @@ const App = () => {
     const [expandedMemberId, setExpandedMemberId] = React.useState(null); // ➕ บันทึกว่ากล่องของบ้านหลังไหนกำลังถูกคลิกเปิดดูรายชื่อ
     // สถานะหน้าจอและเมนู
     const [currentPage, setCurrentPage] = useState('dashboard'); // ควบคุมว่าตอนนี้อยู่หน้าไหน
-    const [isLoggedIn, setIsLoggedIn] = useState(false);        // สถานะการเข้าสู่ระบบ
+    const [isLoggedIn, setIsLoggedIn] = useState(() => {
+        return localStorage.getItem('is_logged_in') === 'true';
+    });
+
+    // ทุกครั้งที่เปลี่ยนสถานะ login ให้เซฟลง storage
+    const toggleLogin = (status) => {
+        setIsLoggedIn(status);
+        localStorage.setItem('is_logged_in', status);
+    };
     const [isMenuOpen, setIsMenuOpen] = useState(false);        // สถานะการเปิด/ปิดเมนูมือถือ
 
     // ข้อมูลสมาชิกและตำแหน่ง
@@ -2457,14 +2990,13 @@ const App = () => {
     };
 
     // --- 4. คำนวณค่าการลดการปล่อยคาร์บอน (Carbon Stats) ---
-    // ใช้ค่าน้ำหนักขยะแต่ละประเภทมาคูณกับค่า Factor (เช่น อลูมิเนียมช่วยลดคาร์บอนได้เยอะที่สุดที่ 9.13)
     const carbonStats = useMemo(() => {
         const FACTORS = {
-            'พลาสติก': 1.03,
-            'กระดาษ': 0.85,
-            'แก้ว': 0.25,
-            'อลูมิเนียม': 9.13,
-            'โลหะผสม': 1.21
+            'พลาสติก': 1.0310,
+            'กระดาษ': 5.6735,     // มาจาก 3.5460 + 2.1275
+            'แก้ว': 0.2760,
+            'อลูมิเนียม': 9.1270,
+            'โลหะผสม': 4.3910
         };
         let total = 0;
         villages.forEach(v => {
@@ -2493,11 +3025,15 @@ const App = () => {
         // หาตัวที่มากที่สุด
         const topType = Object.entries(typeTotals).sort((a, b) => b[1] - a[1])[0];
         const topLabel = topType && topType[1] > 0 ? topType[0] : 'รอดำเนินการ';
-
+        const totalBalance = allMembers.reduce((acc, m) => acc + (Number(m.balance) || 0), 0);
         return [
             { label: 'ประเภทขยะมากที่สุด', value: topLabel, icon: <Database className="text-yellow-500" /> },
             { label: 'ขยะรวมทั้งระบบ', value: `${totalWeight.toLocaleString()} กก.`, icon: <TrendingUp className="text-yellow-500" /> },
-            { label: 'เครดิตรวมทุกหมวด', value: allMembers.reduce((acc, m) => acc + (m.credit || 0), 0).toLocaleString(), icon: <Wallet className="text-yellow-500" /> },
+            {
+                label: 'ยอดเงินออมรวมทั้งโครงการ',
+                value: `฿${totalBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+                icon: <Wallet className="text-yellow-500" />
+            },
             { label: 'จำนวนครัวเรือน', value: allMembers.length, icon: <Users className="text-yellow-500" /> },
             {
                 label: 'ลดการปล่อยคาร์บอน',
@@ -2506,7 +3042,7 @@ const App = () => {
                 hasTooltip: true
             }
         ];
-    }, [allMembers, carbonStats, villages]);
+    }, [allMembers, carbonStats]);
 
     // --- 6. ข้อมูลสรุปรายหมวด (Village Data Calculation) ---
     // ทำหน้าที่รวบรวมคะแนนจาก "รายบ้าน" และ "น้ำหนักขยะในหมวด" มารวมกันเป็นคะแนนรวมของแต่ละหมวด
@@ -2515,8 +3051,9 @@ const App = () => {
             // 1. กรองสมาชิกที่อยู่หมวดนี้จริงๆ
             const vMembers = allMembers.filter(m => Number(m.villageId) === Number(v.id));
 
-            // 2. คำนวณเครดิตรวมจากสมาชิกในหมวดนี้
-            const memberCredits = vMembers.reduce((sum, m) => sum + (Number(m.credit) || 0), 0);
+            // 🌟 2. คำนวณยอดเงินรวม (balance) จากสมาชิกในหมวดนี้ แทนเครดิตเก่า
+            const totalVillageBalance = vMembers.reduce((sum, m) => sum + (Number(m.balance) || 0), 0);
+
             const aggregatedWaste = vMembers.reduce((acc, m) => {
                 const data = m.wasteData || {};
                 Object.keys(data).forEach(type => {
@@ -2533,10 +3070,9 @@ const App = () => {
             return {
                 ...v,
                 members: vMembers.length,
-                credit: Math.max(0, memberCredits),
+                totalBalance: totalVillageBalance,
                 totalWaste: totalWasteInVillage,
                 wasteData: aggregatedWaste,
-                value: Math.max(0, memberCredits) > 0 ? Math.max(0, memberCredits) : 0.1
             };
         });
     }, [villages, allMembers]);
@@ -2596,6 +3132,17 @@ const App = () => {
             case 'admin_logs':
                 // ส่งต่อสเตตัสแอดมินล็อกเข้าไปทำงานในหน้าแยกได้อย่างปลอดภัย หน้าไม่ขาวแล้ว
                 return <AdminLogsView adminLogs={adminLogs} setAdminLogs={setAdminLogs} />;
+            case 'manageBalance':
+                return (
+                    <ManageBalanceView
+                        members={members}
+                        villages={villages}
+                        setMembers={setMembers}
+                        db={db}
+                        logAdminAction={logAdminAction}
+                        setCurrentPage={setCurrentPage}
+                    />
+                );
             case 'map':
                 return !isMapLoaded ? (
                     <div className="flex flex-col items-center justify-center h-[500px] bg-white rounded-3xl m-4 border-2 border-dashed border-slate-200">
