@@ -13,7 +13,7 @@ import {
     LayoutDashboard, Users, Map as MapIcon, History, LogIn,
     Database, FileSpreadsheet, MapPin, Navigation, Info, AlertTriangle,
     Menu, X, ChevronRight, TrendingUp, Leaf, Wallet, PlusCircle, ChevronDown,
-    Eye, EyeOff, Search, ChevronLeft, Home, Edit2, Save, Download
+    Eye, EyeOff, Search, ChevronLeft, Home, Edit2, Save, Download, ShieldCheck
 } from 'lucide-react';
 import { db } from './firebase'; // อันนี้ตัวเดียวพอ!
 import {
@@ -172,18 +172,38 @@ const DashboardView = ({ stats, villageData, wasteTypeData, members, setCurrentP
                                     <PieChart>
                                         <Pie
                                             data={separationStats}
-                                            innerRadius={90}
-                                            outerRadius={130}
+                                            innerRadius="45%"
+                                            outerRadius="75%"
                                             paddingAngle={8}
                                             dataKey="value"
-                                            label={({ name, value }) => `${name}: ${value} หลัง`}
+                                            /* 🌟 ปรับตรงนี้: ถ้ามือถือจอเล็ก (<640px) ให้ซ่อน label ทันที */
+                                            label={({ name, value, x, y, textAnchor }) => {
+                                                const isMobile = window.innerWidth < 640;
+                                                if (isMobile) return null; // มือถือไม่โชว์ label ตรงวงกลม
+
+                                                const shortName = name === 'ยังไม่คัดแยกประเภทขยะ' ? 'ยังไม่คัดแยก' : 'คัดแยกแล้ว';
+                                                return (
+                                                    <text x={x} y={y} textAnchor={textAnchor} dominantBaseline="central" fill="#475569" fontSize={13} fontWeight="bold">
+                                                        {name}: {value}
+                                                    </text>
+                                                );
+                                            }}
                                         >
                                             {separationStats.map((entry, index) => (
                                                 <Cell key={`cell-${index}`} fill={entry.name === 'ยังไม่คัดแยกประเภทขยะ' ? '#ef4444' : '#10b981'} />
                                             ))}
                                         </Pie>
+
                                         <RechartsTooltip contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }} />
-                                        <Legend iconType="circle" layout="horizontal" verticalAlign="bottom" align="center" />
+
+                                        {/* 🌟 Legend จะโชว์ข้อมูลแทนบนมือถือ ทำให้ดูสะอาดตา */}
+                                        <Legend
+                                            iconType="circle"
+                                            layout="horizontal"
+                                            verticalAlign="bottom"
+                                            align="center"
+                                            wrapperStyle={{ fontSize: '13px', paddingTop: '10px' }}
+                                        />
                                     </PieChart>
                                 </ResponsiveContainer>
                             ) : (
@@ -193,13 +213,19 @@ const DashboardView = ({ stats, villageData, wasteTypeData, members, setCurrentP
 
                         {/* สรุปตัวเลขใต้กราฟวงกลม */}
                         <div className="grid grid-cols-2 gap-4 mt-auto">
-                            <div className="p-4 bg-emerald-50/50 rounded-2xl text-center border border-emerald-100/50">
-                                <p className="text-[13px] text-emerald-600 font-bold mb-1">คัดแยกแล้ว</p>
-                                <p className="text-2xl font-black text-emerald-600">{separationStats[0].value} <span className="text-xs font-normal">หลัง</span></p>
+                            <div className="p-4 bg-emerald-500/10 rounded-2xl text-center border-2 border-emerald-500/20 shadow-sm">
+                                <p className="text-[13px] text-emerald-700 font-black mb-1">คัดแยกแล้ว</p>
+                                <p className="text-2xl font-black text-emerald-700">
+                                    {separationStats[0].value} <span className="text-xs font-bold opacity-70">หลัง</span>
+                                </p>
                             </div>
-                            <div className="p-4 bg-red-50/50 rounded-2xl text-center border border-red-100/50">
-                                <p className="text-[13px] text-red-600 font-bold mb-1">ยังไม่คัดแยก</p>
-                                <p className="text-2xl font-black text-red-600">{separationStats[1].value} <span className="text-xs font-normal">หลัง</span></p>
+
+                            {/* กล่องสีแดง: ปรับเป็น bg-red-500/10 ให้มีเนื้อสีแดงจางๆ ที่ชัดขึ้น */}
+                            <div className="p-4 bg-red-500/10 rounded-2xl text-center border-2 border-red-500/20 shadow-sm">
+                                <p className="text-[13px] text-red-700 font-black mb-1">ยังไม่คัดแยก</p>
+                                <p className="text-2xl font-black text-red-600">
+                                    {separationStats[1].value} <span className="text-xs font-bold opacity-70">หลัง</span>
+                                </p>
                             </div>
                         </div>
                     </div>
@@ -262,11 +288,39 @@ const DashboardView = ({ stats, villageData, wasteTypeData, members, setCurrentP
                         <div className="h-[250px] w-full bg-slate-50/50 rounded-2xl flex items-center justify-center border border-slate-50 mb-6 flex-grow">
                             <ResponsiveContainer width="100%" height="100%">
                                 <PieChart>
-                                    <Pie data={participationStats} innerRadius={65} outerRadius={95} paddingAngle={6} dataKey="value" label={({ value }) => `${value} หลัง`}>
-                                        {participationStats.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
+                                    <Pie
+                                        data={participationStats}
+                                        innerRadius="45%"
+                                        outerRadius="75%"
+                                        paddingAngle={6}
+                                        dataKey="value"
+                                        /* 🌟 ปรับตรงนี้: ถ้าเป็นมือถือให้ซ่อน label (คืนค่า null), ถ้าจอใหญ่ให้แสดงปกติ */
+                                        label={({ name, value, x, y, textAnchor }) => {
+                                            const isMobile = window.innerWidth < 640;
+                                            if (isMobile) return null; // 👈 ซ่อน Label ในมือถือทันที!
+
+                                            const shortName = name.replace('โครงการ', '');
+                                            return (
+                                                <text x={x} y={y} textAnchor={textAnchor} dominantBaseline="central" fill="#475569" fontSize={13} fontWeight="bold">
+                                                    {name}: {value}
+                                                </text>
+                                            );
+                                        }}
+                                    >
+                                        {participationStats.map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={entry.color} />
+                                        ))}
                                     </Pie>
+
+                                    {/* 🌟 Legend จะมาทำหน้าที่แทนที่ข้อมูลในมือถือ สวยและอ่านง่ายแน่นอน */}
                                     <RechartsTooltip contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }} />
-                                    <Legend iconType="circle" layout="horizontal" verticalAlign="bottom" align="center" wrapperStyle={{ fontSize: '13px' }} />
+                                    <Legend
+                                        iconType="circle"
+                                        layout="horizontal"
+                                        verticalAlign="bottom"
+                                        align="center"
+                                        wrapperStyle={{ fontSize: '13px', paddingTop: '10px' }}
+                                    />
                                 </PieChart>
                             </ResponsiveContainer>
                         </div>
@@ -600,13 +654,32 @@ const EditMemberModal = ({ member, villageData, onSave, onDelete, onClose }) => 
         const marker = L.marker([initLat, initLng], { draggable: true }).addTo(editMiniMap);
         marker.bindPopup("<b>🏠 ปรับพิกัดบ้านสมาชิก</b><br>สามารถลากหมุดไปวางตรงจุดใหม่ที่ถูกต้องได้").openPopup();
 
-        // ดักจับเหตุการณ์เมื่อแอดมินลากหมุดเสร็จ ให้ดึงพิกัดจุดละติจูด/ลองจิจูดใหม่ไปอัปเดตลงสเตตัสเตรียมเซฟ
         marker.on('dragend', function (e) {
             const position = marker.getLatLng();
             setEditData(prev => ({ ...prev, lat: position.lat, lng: position.lng }));
         });
 
-        return () => editMiniMap.remove();
+        // 🌟 เพิ่มฟังก์ชันค้นหา GPS ตรงนี้
+        window.findEditMiniLocation = () => {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition((pos) => {
+                    const { latitude, longitude } = pos.coords;
+                    editMiniMap.setView([latitude, longitude], 17); // เลื่อนจอไปหา
+                    marker.setLatLng([latitude, longitude]);        // ย้ายหมุดไปปัก
+                    setEditData(prev => ({ ...prev, lat: latitude, lng: longitude })); // เซฟลง State
+                });
+            }
+        };
+
+        // แก้ปัญหาหมุดเพี้ยนเวลาเปิดหน้าต่าง
+        setTimeout(() => {
+            editMiniMap.invalidateSize();
+        }, 300);
+
+        return () => {
+            editMiniMap.remove();
+            delete window.findEditMiniLocation; // เคลียร์ขยะออกจากระบบ
+        };
     }, []);
 
     // ฟังก์ชันสำหรับเพิ่มช่องกรอกรายชื่อคนในบ้านเพิ่ม (ตามเงื่อนไขเพิ่มสมาชิก)
@@ -672,9 +745,21 @@ const EditMemberModal = ({ member, villageData, onSave, onDelete, onClose }) => 
                         </div>
                     </div>
 
-                    {/* 2. แก้ไขการปักหมุดพิกัดบ้าน (หน้าต่างหมุดแก้ไขนี้จะสามารถเลื่อนไปปักเองได้) */}
+                    {/* 2. แก้ไขการปักหมุดพิกัดบ้าน พร้อมปุ่ม GPS */}
                     <div className="space-y-2">
-                        <label className="block text-sm font-bold text-slate-700">🗺️ แก้ไขจุดปักหมุดบ้าน (กดค้างที่ตัวหมุดแล้วลากย้ายตำแหน่งได้อิสระ)</label>
+                        <div className="flex justify-between items-center">
+                            <label className="block text-sm font-bold text-slate-700">🗺️ แก้ไขจุดปักหมุดบ้าน</label>
+
+                            {/* 🌟 ปุ่มกดค้นหา GPS */}
+                            <button
+                                type="button"
+                                onClick={() => window.findEditMiniLocation && window.findEditMiniLocation()}
+                                className="bg-blue-50 text-blue-600 px-3 py-1 rounded-xl text-xs font-bold hover:bg-blue-100 flex items-center gap-1 shadow-sm transition-colors"
+                            >
+                                <Navigation size={12} /> ดึงพิกัดปัจจุบัน
+                            </button>
+                        </div>
+
                         <div id="edit-map-container" className="h-48 w-full rounded-2xl border-2 border-slate-100 z-0 overflow-hidden relative"></div>
                         <p className="text-[11px] text-slate-400 font-mono">พิกัดปรับปรุง: {Number(editData.lat).toFixed(5)}, {Number(editData.lng).toFixed(5)}</p>
                     </div>
@@ -966,7 +1051,7 @@ const MembersView = ({ members, setMembers, villages, setVillages, isLoggedIn, l
             alert("❌ บันทึกข้อมูลไม่สำเร็จ กรุณาตรวจสอบการเชื่อมต่อ");
         }
 
-        setEditingMember(null);
+        setEditingMember(null); refreshData();
     };
 
     // 🗑️ ฟังก์ชันลบข้อมูลบ้านสมาชิกออกจากระบบอย่างถาวร
@@ -1016,7 +1101,7 @@ const MembersView = ({ members, setMembers, villages, setVillages, isLoggedIn, l
                 localStorage.setItem('local_members_data', JSON.stringify(nextMembers));
                 setEditingMember(null);
 
-                alert("🗑️ ลบข้อมูลครัวเรือนและหักลบสถิติขยะออกจากระบบสำเร็จ");
+                alert("🗑️ ลบข้อมูลครัวเรือนและหักลบสถิติขยะออกจากระบบสำเร็จ"); refreshData();
 
             } catch (err) {
                 console.error("ลบข้อมูลผิดพลาด:", err);
@@ -1130,9 +1215,9 @@ const MembersView = ({ members, setMembers, villages, setVillages, isLoggedIn, l
             </div>
 
             {/* ส่วนรายการการ์ดสมาชิก */}
-            <div className="w-full space-y-4">
+            <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                 {!displayedMembers || displayedMembers.length === 0 ? (
-                    <div className="bg-white p-10 text-center text-slate-400 border border-slate-100 rounded-3xl shadow-sm italic text-sm">
+                    <div className="col-span-full bg-white p-10 text-center text-slate-400 border border-slate-100 rounded-3xl shadow-sm italic text-sm">
                         {isLoggedIn
                             ? `ยังไม่มีข้อมูลสมาชิกครัวเรือนลงทะเบียนอยู่ในหมวดที่ ${selectedSortVillageId}`
                             : "ยังไม่มีข้อมูลสมาชิกในระบบ"
@@ -1151,103 +1236,103 @@ const MembersView = ({ members, setMembers, villages, setVillages, isLoggedIn, l
                             return (
                                 <div
                                     key={member.id}
-                                    className="bg-white/90 backdrop-blur-md border border-sky-100/80 rounded-[28px] p-6 shadow-sm hover:shadow-xl hover:border-sky-200 hover:-translate-y-0.5 transition-all duration-300 flex flex-col gap-4"
+                                    className="bg-white/90 backdrop-blur-md border border-sky-100/80 rounded-[28px] p-5 shadow-sm hover:shadow-xl hover:border-sky-200 transition-all duration-300 flex flex-col gap-4 w-full"
                                 >
-                                    {/* ชั้นที่ 1: ส่วนหัว */}
-                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-slate-100">
-                                        <div className="flex flex-wrap items-center gap-2.5">
-                                            <span className="bg-blue-50 text-blue-600 text-base font-black px-3 py-1.5 rounded-2xl border border-blue-100">
+                                    {/* 🌟 ชั้นที่ 1: ส่วนหัว (จัดเรียงใหม่ ไม่เบียดกัน) */}
+                                    <div className="flex justify-between items-start gap-2">
+                                        <div className="flex flex-col gap-1.5">
+                                            <span className="bg-blue-50 text-blue-700 text-sm sm:text-base font-black px-3.5 py-1.5 rounded-2xl w-fit border border-blue-100">
                                                 🏠 บ้านเลขที่ {member.houseNo}
                                             </span>
-                                            <span className="text-xs font-bold px-2.5 py-1 bg-blue-100 text-blue-700 rounded-xl">
+                                            <span className="text-[10px] sm:text-xs font-bold px-2.5 py-1 bg-slate-100 text-slate-500 rounded-xl w-fit">
                                                 {member.category || 'ไม่ระบุหมวด'}
                                             </span>
+                                        </div>
+                                        {isLoggedIn && (
+                                            <button
+                                                type="button"
+                                                onClick={() => setEditingMember(member)}
+                                                className="bg-slate-50 hover:bg-slate-100 text-slate-600 px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 border border-slate-200 shrink-0 shadow-sm"
+                                            >
+                                                ⚙️ <span className="hidden sm:inline">แก้ไขข้อมูล</span>
+                                            </button>
+                                        )}
+                                    </div>
 
-                                            {/* 🌟 ป้ายยอดเงินคงเหลือ (ใหม่) */}
-                                            <span className="text-xs font-black px-3 py-1 bg-green-50 text-green-700 border border-green-200 rounded-xl flex items-center gap-1 font-mono">
-                                                💰 ฿{balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                            </span>
-
-                                            {/* 🌟 ป้ายคาร์บอนเครดิต (ใหม่) */}
-                                            <span className="text-xs font-black px-3 py-1 bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-xl flex items-center gap-1 font-mono">
-                                                🌱 {credit.toFixed(4)} kgCO2e
-                                            </span>
-
-                                            {/* 🌟 ป้ายสวัสดิการจาก Checkbox (ใหม่) */}
-                                            <span className={`text-[10px] font-bold px-3 py-1 rounded-xl border ${hasWelfare ? 'bg-amber-100 text-amber-700 border-amber-200' : 'bg-slate-100 text-slate-400 border-slate-200'}`}>
-                                                {hasWelfare ? '🎁 ได้รับสิทธิ์สวัสดิการกรณีเสียชีวิต' : '❌ ไม่มีสวัสดิการ'}
+                                    {/* 🌟 ชั้นที่ 2: กล่องสถิติการเงินและคาร์บอน (ทำเป็น Grid คู่อ่านง่ายๆ) */}
+                                    <div className="grid grid-cols-2 gap-3 mt-1">
+                                        <div className="bg-amber-50/50 border border-amber-100 rounded-2xl p-3 flex flex-col justify-center">
+                                            <span className="text-[10px] text-amber-600 font-bold uppercase tracking-wide mb-0.5">ยอดเงินคงเหลือ</span>
+                                            <span className="text-sm sm:text-lg font-black text-amber-600 font-mono">
+                                                ฿{balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                             </span>
                                         </div>
-
-                                        <div className="flex items-center gap-2 justify-end">
-                                            <span className={`px-3 py-1.5 rounded-full text-xs font-bold border ${member.isSorted
-                                                ? 'bg-green-100 text-green-600 border-green-200'
-                                                : 'bg-slate-100 text-slate-400 border-slate-200'
-                                                }`}>
-                                                {member.isSorted ? '✅ คัดแยกประเภทขยะแล้ว' : '⚪ ยังไม่คัดแยกประเภทขยะ'}
+                                        <div className="bg-emerald-50/50 border border-emerald-100 rounded-2xl p-3 flex flex-col justify-center">
+                                            <span className="text-[10px] text-emerald-600 font-bold uppercase tracking-wide mb-0.5">คาร์บอนสะสม</span>
+                                            <span className="text-sm sm:text-lg font-black text-emerald-600 font-mono">
+                                                {credit.toFixed(4)} <span className="text-[9px] sm:text-[10px] font-bold">kgCO2e</span>
                                             </span>
-
-                                            {isLoggedIn && (
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setEditingMember(member)}
-                                                    className="bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1 border"
-                                                >
-                                                    ⚙️ แก้ไขข้อมูล
-                                                </button>
-                                            )}
                                         </div>
                                     </div>
 
-                                    {/* ชั้นที่ 2: รายการขยะ */}
-                                    <div className="bg-slate-50/80 rounded-2xl p-4 border border-slate-100">
-                                        <p className="text-xs font-bold text-slate-400 mb-2.5">📦 ปริมาณน้ำหนักขยะประจำครัวเรือน</p>
+                                    {/* 🌟 ชั้นที่ 3: ป้ายสถานะการคัดแยกและสวัสดิการ */}
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <span className={`px-2.5 py-1 rounded-lg text-[10px] sm:text-xs font-bold border ${member.isSorted ? 'bg-green-100 text-green-700 border-green-200' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
+                                            {member.isSorted ? '✅ คัดแยกแล้ว' : '⚪ ยังไม่คัดแยก'}
+                                        </span>
+                                        <span className={`px-2.5 py-1 rounded-lg text-[10px] sm:text-xs font-bold border ${hasWelfare ? 'bg-amber-100 text-amber-700 border-amber-200' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
+                                            {hasWelfare ? '🎁 ได้สวัสดิการ' : '❌ ไม่มีสวัสดิการ'}
+                                        </span>
+                                    </div>
+
+                                    {/* 🌟 ชั้นที่ 4: รายการขยะ */}
+                                    <div className="bg-slate-50/80 rounded-2xl p-3 sm:p-4 border border-slate-100">
+                                        <p className="text-[10px] sm:text-xs font-bold text-slate-400 mb-2">📦 ปริมาณขยะประจำครัวเรือน</p>
                                         <div className="flex flex-wrap gap-2">
                                             {member.wasteData && Object.entries(member.wasteData).some(([_, w]) => Number(w) > 0) ? (
                                                 Object.entries(member.wasteData).map(([type, weight]) => {
                                                     if (Number(weight) <= 0) return null;
                                                     return (
-                                                        <div key={type} className="bg-white border border-slate-200 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-600 flex items-center gap-1.5 shadow-sm">
+                                                        <div key={type} className="bg-white border border-slate-200 px-2.5 py-1 rounded-xl text-[10px] sm:text-xs font-bold text-slate-600 flex items-center gap-1.5 shadow-sm">
                                                             <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
-                                                            <span>{type}:</span>
-                                                            <span className="text-blue-600 font-black">{Number(weight).toFixed(2)}</span>
-                                                            <span className="text-[10px] text-slate-400">กก.</span>
+                                                            <span>{type}: <span className="text-blue-600 font-black">{Number(weight).toFixed(2)}</span> กก.</span>
                                                         </div>
                                                     );
                                                 })
                                             ) : (
-                                                <p className="text-xs text-slate-400 italic">ไม่มีข้อมูลการบันทึกขยะนำฝาก</p>
+                                                <p className="text-[10px] sm:text-xs text-slate-400 italic">ไม่มีข้อมูลขยะนำฝาก</p>
                                             )}
                                         </div>
                                     </div>
 
-                                    {/* ชั้นที่ 3: รายชื่อสมาชิกแบบ Dropdown */}
+                                    {/* 🌟 ชั้นที่ 5: รายชื่อสมาชิกแบบ Dropdown */}
                                     <div className="w-full">
                                         <button
                                             type="button"
                                             onClick={() => setExpandedMemberId(isExpanded ? null : member.id)}
-                                            className="w-full py-2.5 bg-slate-50 hover:bg-slate-100 rounded-xl text-xs font-bold text-slate-500 flex items-center justify-center gap-1.5 transition-colors border border-transparent hover:border-slate-200"
+                                            className="w-full py-2.5 bg-slate-50 hover:bg-slate-100 rounded-xl text-[10px] sm:text-xs font-bold text-slate-500 flex items-center justify-between px-4 transition-colors border border-transparent hover:border-slate-200 shadow-sm"
                                         >
-                                            <span>👥 รายชื่อสมาชิกในบ้าน ({member.familyMembers ? member.familyMembers.filter(n => n && n.trim() !== '').length : 0} คน)</span>
-                                            <span className="text-[10px]">{isExpanded ? '▲' : '▼'}</span>
+                                            <span className="flex items-center gap-2">
+                                                👥 รายชื่อสมาชิกในบ้าน <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-lg text-[10px]">{member.familyMembers ? member.familyMembers.filter(n => n && n.trim() !== '').length : 0} คน</span>
+                                            </span>
+                                            <span className={`transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>▼</span>
                                         </button>
 
                                         {isExpanded && (
-                                            <div className="mt-2 p-4 bg-white border border-slate-100 rounded-2xl space-y-2 shadow-inner">
+                                            <div className="mt-2 p-3 sm:p-4 bg-white border border-slate-100 rounded-2xl space-y-1.5 sm:space-y-2 shadow-inner">
                                                 {member.familyMembers && member.familyMembers.filter(n => n && n.trim() !== '').length > 0 ? (
                                                     member.familyMembers.filter(n => n && n.trim() !== '').map((name, idx) => (
-                                                        <div key={idx} className="pt-2 first:pt-0 text-xs font-bold text-slate-600 flex items-center gap-2 border-b border-slate-50 last:border-0 pb-2 last:pb-0">
-                                                            <span className="text-slate-300 font-mono">{idx + 1}.</span>
-                                                            <span>{name}</span>
+                                                        <div key={idx} className="pt-1.5 sm:pt-2 first:pt-0 text-[10px] sm:text-xs font-bold text-slate-600 flex items-center gap-2 border-b border-slate-50 last:border-0 pb-1.5 sm:pb-2 last:pb-0">
+                                                            <span className="bg-slate-100 text-slate-400 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black shrink-0">{idx + 1}</span>
+                                                            <span className="truncate">{name}</span>
                                                         </div>
                                                     ))
                                                 ) : (
-                                                    <p className="text-xs text-slate-400 italic text-center py-1">ไม่มีข้อมูลรายชื่อสมาชิกในระบบ</p>
+                                                    <p className="text-[10px] sm:text-xs text-slate-400 italic text-center py-1">ไม่มีข้อมูลรายชื่อสมาชิก</p>
                                                 )}
                                             </div>
                                         )}
                                     </div>
-
                                 </div>
                             );
                         })
@@ -1304,100 +1389,255 @@ const MembersView = ({ members, setMembers, villages, setVillages, isLoggedIn, l
         </div>
     );
 };
-const ManageBalanceView = ({ members, villages, setMembers, db, logAdminAction, setCurrentPage }) => {
-    // สเตตัสการควบคุมหน้าจอ
+// =========================================================================
+// ➕ [คอมโพเนนต์เพิ่มใหม่]: หน้าต่างหักยอดเงินสมาชิกแบบกลุ่ม (Bulk Deduct)
+// =========================================================================
+const BulkDeductModal = ({ members, villages, onClose, onSave }) => {
+    const [selectedVillageId, setSelectedVillageId] = useState(villages.length > 0 ? villages[0].id : '');
+    const [deductAmount, setDeductAmount] = useState('');
+    const [checkedIds, setCheckedIds] = useState([]);
+
+    // 🔄 กรองสมาชิกตามหมวดที่เลือก
+    const filteredMembers = useMemo(() => {
+        if (!selectedVillageId) return [];
+        return members.filter(m => Number(m.villageId) === Number(selectedVillageId));
+    }, [members, selectedVillageId]);
+
+    // 🌟 เมื่อเปลี่ยนหมวดหมู่ ให้ "ติ๊กถูกทุกคน" ในหมวดนั้นอัตโนมัติ
+    useEffect(() => {
+        setCheckedIds(filteredMembers.map(m => m.id));
+    }, [selectedVillageId]); // ไม่ต้องใส่ filteredMembers ใน array นี้เพื่อกันการ render ลูป
+
+    // ฟังก์ชันจัดการการติ๊ก Checkbox
+    const handleToggleCheck = (id) => {
+        setCheckedIds(prev => prev.includes(id) ? prev.filter(vid => vid !== id) : [...prev, id]);
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black/70 z-[9999] flex items-center justify-center p-4 backdrop-blur-sm">
+            <div className="bg-white rounded-3xl w-full max-w-2xl overflow-hidden flex flex-col shadow-2xl max-h-[90vh] text-slate-700">
+                {/* Header */}
+                <div className="p-6 bg-red-600 text-white flex justify-between items-center shrink-0">
+                    <div>
+                        <h3 className="font-bold text-xl flex items-center gap-2">➖ หักยอดเงินสมาชิกแบบกลุ่ม</h3>
+                        <p className="text-xs text-red-100 mt-0.5">เลือกลบยอดเงินสมาชิกหลายคนพร้อมกันในคลิกเดียว</p>
+                    </div>
+                    <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition text-white">✕</button>
+                </div>
+
+                {/* Content */}
+                <div className="p-6 space-y-5 overflow-y-auto flex-grow scrollbar-thin">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {/* 1. เลือกหมวด */}
+                        <div>
+                            <label className="block text-sm font-bold mb-1.5 text-slate-700">📂 เลือกหมวดหมู่ที่ต้องการหักเงิน</label>
+                            <select
+                                value={selectedVillageId}
+                                onChange={(e) => setSelectedVillageId(e.target.value)}
+                                className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none bg-slate-50 font-bold text-slate-700 focus:border-red-400 cursor-pointer"
+                            >
+                                {villages.map(v => (
+                                    <option key={v.id} value={v.id}>{v.name}</option>
+                                ))}
+                            </select>
+                        </div>
+                        {/* 2. กรอกยอดเงินที่ต้องการหัก */}
+                        <div>
+                            <label className="block text-sm font-bold mb-1.5 text-red-600">💰 ระบุยอดเงินที่ต้องการหัก (บาท)</label>
+                            <div className="relative flex items-center">
+                                <span className="absolute left-4 font-bold text-slate-400">฿</span>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    placeholder="0.00"
+                                    value={deductAmount}
+                                    onChange={(e) => setDeductAmount(e.target.value)}
+                                    className="w-full border-2 border-slate-100 focus:border-red-400 outline-none text-right font-black text-red-600 pl-10 pr-4 py-3 rounded-xl bg-slate-50"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* 3. รายชื่อสมาชิก (ติ๊กเลือกได้) */}
+                    <div className="border border-slate-200 rounded-2xl overflow-hidden flex flex-col">
+                        <div className="bg-slate-100 p-3 flex justify-between items-center border-b border-slate-200">
+                            <h4 className="text-sm font-bold text-slate-700">
+                                👥 รายชื่อสมาชิกในหมวด ({filteredMembers.length} หลัง)
+                            </h4>
+                            <div className="flex gap-2">
+                                <button onClick={() => setCheckedIds(filteredMembers.map(m => m.id))} className="text-xs bg-white border px-2 py-1 rounded-lg font-bold hover:bg-slate-50">ติ๊กทั้งหมด</button>
+                                <button onClick={() => setCheckedIds([])} className="text-xs bg-white border px-2 py-1 rounded-lg font-bold hover:bg-slate-50 text-red-500">เอาติ๊กออกทั้งหมด</button>
+                            </div>
+                        </div>
+
+                        <div className="max-h-60 overflow-y-auto scrollbar-thin p-2 space-y-1 bg-slate-50">
+                            {filteredMembers.length > 0 ? filteredMembers.map(m => {
+                                const isChecked = checkedIds.includes(m.id);
+                                const currentBalance = Number(m.balance) || 0;
+                                const deductVal = Number(deductAmount) || 0;
+                                const afterBalance = Math.max(0, currentBalance - deductVal); // คำนวณเงินคงเหลือให้ดูล่วงหน้า
+
+                                return (
+                                    <label key={m.id} className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-colors ${isChecked ? 'bg-white border-blue-200 shadow-sm' : 'bg-transparent border-transparent opacity-60'}`}>
+                                        <div className="flex items-center gap-3">
+                                            <input
+                                                type="checkbox"
+                                                className="w-5 h-5 rounded-md cursor-pointer accent-blue-600"
+                                                checked={isChecked}
+                                                onChange={() => handleToggleCheck(m.id)}
+                                            />
+                                            <span className="font-bold text-sm">บ้านเลขที่ {m.houseNo}</span>
+                                        </div>
+                                        <div className="text-right text-xs flex flex-col items-end gap-1">
+                                            <span className="font-bold text-slate-500">เดิม: ฿{currentBalance.toLocaleString()}</span>
+                                            {isChecked && deductVal > 0 && (
+                                                <span className="font-black text-red-500 bg-red-50 px-2 py-0.5 rounded-md">
+                                                    เหลือ: ฿{afterBalance.toLocaleString()}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </label>
+                                );
+                            }) : <p className="text-center text-slate-400 py-4 text-sm font-bold">ไม่พบสมาชิกในหมวดนี้</p>}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Footer */}
+                <div className="p-6 bg-slate-50 border-t flex gap-3 shrink-0 items-center justify-between">
+                    <span className="text-sm font-bold text-slate-500">เลือกไว้: <span className="text-blue-600">{checkedIds.length}</span> หลัง</span>
+                    <div className="flex gap-2">
+                        <button type="button" onClick={onClose} className="px-6 py-3 font-bold text-slate-500 hover:text-slate-700 transition">ยกเลิก</button>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                const amount = Number(deductAmount);
+                                if (isNaN(amount) || amount <= 0) return alert("❌ กรุณาระบุจำนวนเงินที่ต้องการหักให้ถูกต้องครับ");
+                                if (checkedIds.length === 0) return alert("❌ กรุณาติ๊กเลือกสมาชิกอย่างน้อย 1 บ้านครับ");
+
+                                onSave(checkedIds, amount, selectedVillageId);
+                            }}
+                            className="bg-red-600 text-white px-8 py-3 rounded-2xl font-bold shadow-lg hover:bg-red-700 transition"
+                        >
+                            💾 ยืนยันการหักเงิน
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+const ManageBalanceView = ({ members, villages, setMembers, db, logAdminAction, setCurrentPage, refreshData }) => {
     const [selectedVillageId, setSelectedVillageId] = useState(villages.length > 0 ? villages[0].id : '');
     const [currentPage, setCurrentPageNum] = useState(1);
     const [searchTerm, setSearchTerm] = useState('');
-
-    // สเตตัสสำหรับการแก้ไข
     const [editingId, setEditingId] = useState(null);
     const [editBalance, setEditBalance] = useState('');
 
+    // 🌟 สเตตัสสำหรับเปิดหน้าต่างหักเงินกลุ่ม
+    const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
+
     const itemsPerPage = 10;
 
-    // 🔄 กรองข้อมูลตามหมวดหมู่ที่เลือก และคำค้นหา
     const filteredMembers = useMemo(() => {
         let result = members;
-        // 1. กรองตามหมวด
         if (selectedVillageId !== 'all') {
             result = result.filter(m => Number(m.villageId) === Number(selectedVillageId));
         }
-        // 2. กรองตามบ้านเลขที่
         if (searchTerm.trim() !== '') {
             result = result.filter(m => String(m.houseNo).includes(searchTerm.trim()));
         }
         return result;
     }, [members, selectedVillageId, searchTerm]);
 
-    // 📄 ระบบแบ่งหน้า (Pagination)
     const totalPages = Math.max(1, Math.ceil(filteredMembers.length / itemsPerPage));
     const currentMembers = filteredMembers.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
-    // รีเซ็ตหน้ากลับไปหน้า 1 เสมอเวลาเปลี่ยนหมวดหรือค้นหา
     React.useEffect(() => {
         setCurrentPageNum(1);
         setEditingId(null);
     }, [selectedVillageId, searchTerm]);
 
-    // 💾 ฟังก์ชันบันทึกยอดเงินขึ้น Database
     const handleSaveBalance = async (member) => {
         const newBalance = Number(editBalance);
         if (isNaN(newBalance)) return alert("❌ กรุณากรอกตัวเลขให้ถูกต้องครับ");
 
         try {
-            // อัปเดตข้อมูลก้อนใหม่
             const updatedMember = { ...member, balance: newBalance };
-
-            // ☁️ ดันขึ้น Firebase
             await setDoc(doc(db, "members", String(member.id)), updatedMember, { merge: true });
 
-            // 🔄 อัปเดต State ให้หน้าจอเปลี่ยนตามทันที
-            setMembers(prev => prev.map(m => m.id === member.id ? updatedMember : m));
+            // อัปเดตข้อมูลบนจอทันที
+            if (typeof refreshData === 'function') await refreshData();
 
-            // 📝 บันทึก Log เจ้าหน้าที่
             if (typeof logAdminAction === 'function') {
                 logAdminAction(`แก้ไขยอดเงิน บ้านเลขที่ ${member.houseNo} เป็น ฿${newBalance.toLocaleString()}`);
             }
-
             setEditingId(null);
         } catch (error) {
-            console.error("Error updating balance:", error);
             alert("❌ เกิดข้อผิดพลาดในการบันทึกข้อมูล กรุณาลองใหม่");
+        }
+    };
+
+    // 🌟 ฟังก์ชันจัดการการหักเงินแบบกลุ่ม (Bulk Deduct)
+    const handleBulkSave = async (checkedIds, deductAmount, villageId) => {
+        if (!confirm(`⚠️ ยืนยันการหักเงิน ฿${deductAmount} จากสมาชิกที่เลือกจำนวน ${checkedIds.length} หลังคาเรือน?`)) return;
+
+        try {
+            // วนลูปอัปเดตทีละคนลง Firebase
+            for (const id of checkedIds) {
+                const targetMem = members.find(m => m.id === id);
+                if (targetMem) {
+                    // หักลบเงิน (ป้องกันไม่ให้ติดลบ)
+                    const newBalance = Math.max(0, (Number(targetMem.balance) || 0) - deductAmount);
+                    await setDoc(doc(db, "members", String(id)), { ...targetMem, balance: newBalance }, { merge: true });
+                }
+            }
+
+            // บันทึกประวัติการทำงานแอดมิน
+            const targetVillage = villages.find(v => Number(v.id) === Number(villageId));
+            if (typeof logAdminAction === 'function') {
+                logAdminAction(`หักยอดเงินแบบกลุ่ม หมวด: ${targetVillage ? targetVillage.name : 'ไม่ระบุ'} จำนวน ${checkedIds.length} หลังคาเรือน (หักบ้านละ ฿${deductAmount.toLocaleString()})`);
+            }
+
+            // โหลดข้อมูลใหม่เพื่อให้หน้าจออัปเดตทันที
+            if (typeof refreshData === 'function') await refreshData();
+
+            setIsBulkModalOpen(false);
+            alert(`✅ ทำการหักยอดเงินสำเร็จแล้วทั้งสิ้น ${checkedIds.length} ครัวเรือน!`);
+
+        } catch (err) {
+            console.error(err);
+            alert("❌ เกิดข้อผิดพลาดในการอัปเดตข้อมูลบน Cloud");
         }
     };
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
-            {/* Header และปุ่มย้อนกลับ */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
                 <div>
                     <h2 className="text-2xl font-black text-emerald-800 flex items-center gap-2">
                         <Wallet className="text-emerald-500" /> จัดการยอดเงินสมาชิก
                     </h2>
-                    <p className="text-sm text-slate-500 mt-1">อัปเดตยอดเงินคงเหลือรายครัวเรือนแบบเร่งด่วน</p>
+                    <p className="text-sm text-slate-500 mt-1">อัปเดตยอดเงินคงเหลือ และหักยอดเงินแบบกลุ่ม</p>
                 </div>
                 <button
-                    onClick={() => setCurrentPage('admin-home')} // หรือหน้าที่เป็น Dashboard หลักของน้า
+                    onClick={() => setCurrentPage('admin-home')}
                     className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-bold transition-colors text-sm"
                 >
                     ← กลับหน้าแผงจัดการ
                 </button>
             </div>
 
-            {/* แผงควบคุม (เลือกหมวด + ค้นหา) */}
-            <div className="flex flex-col sm:flex-row gap-4">
-                <div className="bg-white p-2 rounded-2xl border border-slate-200 shadow-sm flex-1 flex items-center px-3">
-                    <span className="text-sm font-bold text-slate-500 mr-2 whitespace-nowrap">📂 เลือกหมวด:</span>
+            <div className="flex flex-col lg:flex-row gap-4">
+                <div className="bg-white p-2 rounded-2xl border border-slate-200 shadow-sm flex-1 flex flex-col sm:flex-row items-stretch sm:items-center px-3 gap-2">
+                    <span className="text-sm font-bold text-slate-500 whitespace-nowrap pl-2 hidden sm:block">📂 หมวด:</span>
                     <select
                         value={selectedVillageId}
                         onChange={(e) => setSelectedVillageId(e.target.value)}
-                        className="bg-slate-50 border border-slate-200 px-3 py-2 rounded-xl text-sm font-bold text-slate-700 outline-none focus:border-emerald-500 w-full cursor-pointer"
+                        className="bg-slate-50 border border-slate-200 px-3 py-2 rounded-xl text-sm font-bold text-slate-700 outline-none focus:border-emerald-500 flex-1 cursor-pointer"
                     >
                         <option value="all">-- แสดงทุกหมวดหมู่ --</option>
-                        {villages.map(v => (
-                            <option key={v.id} value={v.id}>{v.name}</option>
-                        ))}
+                        {villages.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
                     </select>
                 </div>
 
@@ -1411,33 +1651,38 @@ const ManageBalanceView = ({ members, villages, setMembers, db, logAdminAction, 
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
                 </div>
+
+                {/* 🌟 ปุ่มหักเงินกลุ่ม */}
+                <button
+                    onClick={() => setIsBulkModalOpen(true)}
+                    className="bg-red-50 text-red-600 border border-red-200 hover:bg-red-600 hover:text-white px-5 py-3 lg:py-2 rounded-2xl font-bold flex items-center justify-center gap-2 transition-colors shadow-sm w-full lg:w-auto shrink-0"
+                >
+                    ➖ หักเงินรายกลุ่ม
+                </button>
             </div>
 
-            {/* 📋 ตารางรายชื่อ (Card List) */}
+            {/* 📋 ตารางรายชื่อ */}
             <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden flex flex-col min-h-[400px]">
-                {/* หัวตาราง */}
                 <div className="grid grid-cols-2 bg-slate-50 p-4 border-b border-slate-100 text-sm font-bold text-slate-500">
                     <div>บ้านเลขที่ (สมาชิก)</div>
                     <div className="text-right pr-4">ยอดเงินคงเหลือ (บาท)</div>
                 </div>
 
-                {/* รายการบ้าน */}
                 <div className="divide-y divide-slate-50 flex-grow">
                     {currentMembers.length > 0 ? (
                         currentMembers.map(m => (
                             <div key={m.id} className="grid grid-cols-2 p-4 items-center hover:bg-emerald-50/30 transition-colors">
                                 <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center">
+                                    <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center shrink-0">
                                         <Home size={18} />
                                     </div>
-                                    <div>
-                                        <div className="font-black text-slate-700">บ้านเลขที่ {m.houseNo}</div>
-                                        <div className="text-[10px] font-bold text-slate-400">{m.category || 'ไม่ระบุหมวด'}</div>
+                                    <div className="min-w-0">
+                                        <div className="font-black text-slate-700 truncate">บ้านเลขที่ {m.houseNo}</div>
+                                        <div className="text-[10px] font-bold text-slate-400 truncate">{m.category || 'ไม่ระบุหมวด'}</div>
                                     </div>
                                 </div>
 
                                 <div className="flex justify-end items-center gap-2">
-                                    {/* ✏️ โหมดแก้ไข vs โหมดแสดงผล */}
                                     {editingId === m.id ? (
                                         <div className="flex items-center gap-2 bg-emerald-50 p-1.5 rounded-xl border border-emerald-200">
                                             <span className="text-emerald-700 font-bold pl-2">฿</span>
@@ -1447,18 +1692,14 @@ const ManageBalanceView = ({ members, villages, setMembers, db, logAdminAction, 
                                                 autoFocus
                                                 value={editBalance}
                                                 onChange={(e) => setEditBalance(e.target.value)}
-                                                className="w-24 bg-white border border-emerald-200 rounded-lg px-2 py-1.5 font-black text-emerald-700 text-right outline-none focus:ring-2 focus:ring-emerald-400"
+                                                className="w-20 sm:w-24 bg-white border border-emerald-200 rounded-lg px-2 py-1.5 font-black text-emerald-700 text-right outline-none focus:ring-2 focus:ring-emerald-400"
                                             />
-                                            <button onClick={() => handleSaveBalance(m)} className="p-1.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 shadow-sm">
-                                                <Save size={16} />
-                                            </button>
-                                            <button onClick={() => setEditingId(null)} className="p-1.5 bg-white text-slate-400 border rounded-lg hover:bg-slate-100">
-                                                <X size={16} />
-                                            </button>
+                                            <button onClick={() => handleSaveBalance(m)} className="p-1.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 shadow-sm"><Save size={16} /></button>
+                                            <button onClick={() => setEditingId(null)} className="p-1.5 bg-white text-slate-400 border rounded-lg hover:bg-slate-100"><X size={16} /></button>
                                         </div>
                                     ) : (
-                                        <div className="flex items-center gap-4">
-                                            <span className="font-black text-amber-600 text-lg font-mono">
+                                        <div className="flex items-center gap-3 sm:gap-4">
+                                            <span className="font-black text-amber-600 text-base sm:text-lg font-mono">
                                                 ฿{(Number(m.balance) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                             </span>
                                             <button
@@ -1466,9 +1707,9 @@ const ManageBalanceView = ({ members, villages, setMembers, db, logAdminAction, 
                                                     setEditingId(m.id);
                                                     setEditBalance(m.balance || 0);
                                                 }}
-                                                className="p-2 bg-slate-100 text-slate-500 rounded-xl hover:bg-amber-100 hover:text-amber-600 transition-colors border border-slate-200 hover:border-amber-200 flex items-center gap-1.5 text-xs font-bold shadow-sm"
+                                                className="p-2 bg-slate-100 text-slate-500 rounded-xl hover:bg-amber-100 hover:text-amber-600 transition-colors border border-slate-200 flex items-center gap-1.5 text-xs font-bold shadow-sm"
                                             >
-                                                <Edit2 size={14} /> แก้ไข
+                                                <Edit2 size={14} /> <span className="hidden sm:inline">แก้ไข</span>
                                             </button>
                                         </div>
                                     )}
@@ -1477,42 +1718,38 @@ const ManageBalanceView = ({ members, villages, setMembers, db, logAdminAction, 
                         ))
                     ) : (
                         <div className="p-10 text-center text-slate-400 font-bold flex flex-col items-center justify-center h-full">
-                            <Wallet size={48} className="mb-4 text-slate-200" />
-                            ไม่พบข้อมูลสมาชิกในหมวดนี้
+                            <Wallet size={48} className="mb-4 text-slate-200" />ไม่พบข้อมูลสมาชิกในหมวดนี้
                         </div>
                     )}
                 </div>
 
-                {/* 📄 Pagination (ด้านล่างสุด) */}
                 {filteredMembers.length > 0 && (
                     <div className="bg-slate-50 border-t border-slate-100 p-4 flex items-center justify-between">
-                        <button
-                            onClick={() => setCurrentPageNum(prev => Math.max(prev - 1, 1))}
-                            disabled={currentPage === 1}
-                            className={`flex items-center gap-1 px-4 py-2 rounded-xl font-bold text-sm transition-colors ${currentPage === 1 ? 'bg-slate-100 text-slate-300 cursor-not-allowed' : 'bg-white text-slate-600 hover:bg-emerald-50 hover:text-emerald-600 border shadow-sm'}`}
-                        >
-                            <ChevronLeft size={16} /> ก่อนหน้า
+                        <button onClick={() => setCurrentPageNum(prev => Math.max(prev - 1, 1))} disabled={currentPage === 1} className={`flex items-center gap-1 px-4 py-2 rounded-xl font-bold text-sm transition-colors ${currentPage === 1 ? 'bg-slate-100 text-slate-300 cursor-not-allowed' : 'bg-white text-slate-600 hover:bg-emerald-50 hover:text-emerald-600 border shadow-sm'}`}>
+                            <ChevronLeft size={16} /> <span className="hidden sm:inline">ก่อนหน้า</span>
                         </button>
-
-                        <span className="font-bold text-slate-500 text-sm bg-slate-100 px-4 py-2 rounded-xl">
-                            หน้าที่ {currentPage} จากทั้งหมด {totalPages}
-                        </span>
-
-                        <button
-                            onClick={() => setCurrentPageNum(prev => Math.min(prev + 1, totalPages))}
-                            disabled={currentPage === totalPages}
-                            className={`flex items-center gap-1 px-4 py-2 rounded-xl font-bold text-sm transition-colors ${currentPage === totalPages ? 'bg-slate-100 text-slate-300 cursor-not-allowed' : 'bg-white text-slate-600 hover:bg-emerald-50 hover:text-emerald-600 border shadow-sm'}`}
-                        >
-                            ถัดไป <ChevronRight size={16} />
+                        <span className="font-bold text-slate-500 text-sm bg-slate-100 px-4 py-2 rounded-xl">หน้า {currentPage}/{totalPages}</span>
+                        <button onClick={() => setCurrentPageNum(prev => Math.min(prev + 1, totalPages))} disabled={currentPage === totalPages} className={`flex items-center gap-1 px-4 py-2 rounded-xl font-bold text-sm transition-colors ${currentPage === totalPages ? 'bg-slate-100 text-slate-300 cursor-not-allowed' : 'bg-white text-slate-600 hover:bg-emerald-50 hover:text-emerald-600 border shadow-sm'}`}>
+                            <span className="hidden sm:inline">ถัดไป</span> <ChevronRight size={16} />
                         </button>
                     </div>
                 )}
             </div>
+
+            {/* 🌟 เรียกใช้งานหน้าต่างหักเงินเมื่อสเตตัส isBulkModalOpen เป็น true */}
+            {isBulkModalOpen && (
+                <BulkDeductModal
+                    members={members}
+                    villages={villages}
+                    onClose={() => setIsBulkModalOpen(false)}
+                    onSave={handleBulkSave}
+                />
+            )}
         </div>
     );
 };
 // === หน้าจอแสดงประวัติการทำรายการ (HistoryView) โฉมใหม่ ===
-const HistoryView = ({ transactions, villages, db }) => { // 🌟 ต้องรับ db มาใช้ลบข้อมูล
+const HistoryView = ({ transactions, villages, db }) => {
     const [selectedCategory, setSelectedCategory] = useState('all');
 
     const filteredTx = (transactions || []).filter(tx =>
@@ -1520,10 +1757,12 @@ const HistoryView = ({ transactions, villages, db }) => { // 🌟 ต้อง�
     );
 
     const handleExportExcel = () => {
-        const headers = ['ลำดับ', 'วันที่', 'เวลา', 'หมวดหมู่', 'บ้านเลขที่', 'คาร์บอนที่ได้ (kgCO2e)', 'พลาสติก (กก.)', 'กระดาษ (กก.)', 'แก้ว (กก.)', 'อลูมิเนียม (กก.)', 'โลหะผสม (กก.)'];
+        // 🌟 เพิ่มคอลัมน์ "ยอดเงินฝากเพิ่ม" ลงใน Excel
+        const headers = ['ลำดับ', 'วันที่', 'เวลา', 'ผู้ดำเนินการ', 'หมวดหมู่', 'บ้านเลขที่', 'ยอดเงินฝากเพิ่ม (บาท)', 'คาร์บอนที่ได้ (kgCO2e)', 'พลาสติก (กก.)', 'กระดาษ (กก.)', 'แก้ว (กก.)', 'อลูมิเนียม (กก.)', 'โลหะผสม (กก.)'];
         const dataRows = filteredTx.map((tx, i) => [
-            i + 1, tx.date, tx.time, tx.category || 'ไม่ระบุ', tx.houseNo,
-            (Number(tx.creditAdded) || 0).toFixed(4),
+            i + 1, tx.date, tx.time, tx.operator || 'ไม่ระบุ', tx.category || 'ไม่ระบุ', tx.houseNo,
+            (Number(tx.addedBalance) || 0).toFixed(2), // ยอดเงิน
+            (Number(tx.creditAdded) || 0).toFixed(4), // คาร์บอน
             (Number(tx.wasteData?.['พลาสติก']) || 0).toFixed(2),
             (Number(tx.wasteData?.['กระดาษ']) || 0).toFixed(2),
             (Number(tx.wasteData?.['แก้ว']) || 0).toFixed(2),
@@ -1541,15 +1780,14 @@ const HistoryView = ({ transactions, villages, db }) => { // 🌟 ต้อง�
         link.click();
     };
 
-    // 🌟 ฟังก์ชันล้างประวัติจาก Database
     const handleClearHistory = async () => {
-        if (!confirm(`⚠️ ยืนยันการ "ล้างประวัติการฝากขยะ" ของ ${selectedCategory === 'all' ? 'ทุกหมวดหมู่' : selectedCategory} ออกจากฐานข้อมูล?\n(ยอดเงินและคาร์บอนจริงของสมาชิกจะไม่หายไป แนะนำให้ Export ไว้ก่อน)`)) return;
+        if (!confirm(`⚠️ ยืนยันการ "ล้างประวัติการฝาก" ของ ${selectedCategory === 'all' ? 'ทุกหมวดหมู่' : selectedCategory} ออกจากฐานข้อมูล?\n(ยอดเงินและคาร์บอนจริงของสมาชิกจะไม่หายไป แนะนำให้ Export ไว้ก่อน)`)) return;
 
         try {
             for (const tx of filteredTx) {
                 await deleteDoc(doc(db, "waste_transactions", String(tx.id)));
             }
-            alert("🗑️ ล้างประวัติการฝากขยะบนระบบ Cloud สำเร็จ");
+            alert("🗑️ ล้างประวัติบนระบบ Cloud สำเร็จ (กรุณารีเฟรชเพื่อดูผลลัพธ์)");
         } catch (error) {
             console.error("Error clearing DB:", error);
             alert("❌ ลบประวัติผิดพลาด");
@@ -1559,48 +1797,76 @@ const HistoryView = ({ transactions, villages, db }) => { // 🌟 ต้อง�
     return (
         <div className="space-y-4 animate-in fade-in duration-300 text-slate-700">
             <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+
                 <div className="flex flex-col lg:flex-row justify-between gap-4 mb-6">
                     <div>
-                        <h2 className="font-bold text-xl text-slate-800 flex items-center gap-2"><History className="text-purple-500" /> ประวัติการนำฝากขยะ</h2>
+                        <h2 className="font-bold text-xl text-slate-800 flex items-center gap-2"><History className="text-purple-500" /> ประวัติการฝากขยะและเงิน</h2>
                         <p className="text-sm text-slate-500 mt-1">บันทึกประวัติการฝากแต่ละครั้ง (ล้างเพื่อลดภาระฐานข้อมูลได้)</p>
                     </div>
-                    <div className="flex items-center gap-3">
-                        <select value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)} className="bg-slate-50 border p-2 rounded-xl text-sm font-bold outline-none">
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
+                        <select value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)} className="bg-slate-50 border p-2.5 rounded-xl text-sm font-bold outline-none w-full sm:w-auto">
                             <option value="all">คัดกรอง: ดูทุกหมวดหมู่</option>
                             {villages && villages.map((v, i) => <option key={i} value={v.name}>{v.name}</option>)}
                         </select>
-                        {filteredTx.length > 0 && <button onClick={handleExportExcel} className="bg-emerald-50 text-emerald-600 px-4 py-2 rounded-xl font-bold flex gap-2"><Download size={16} /> Export</button>}
-                        {filteredTx.length > 0 && <button onClick={handleClearHistory} className="bg-white text-red-500 border border-red-200 px-4 py-2 rounded-xl font-bold">🗑️ ล้างประวัติ</button>}
+                        <div className="flex gap-2 w-full sm:w-auto">
+                            {filteredTx.length > 0 && <button onClick={handleExportExcel} className="flex-1 sm:flex-none bg-emerald-50 text-emerald-600 border border-emerald-200 px-4 py-2.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-emerald-600 hover:text-white transition"><Download size={16} /> Export</button>}
+                            {filteredTx.length > 0 && <button onClick={handleClearHistory} className="flex-1 sm:flex-none bg-white text-red-500 border border-red-200 px-4 py-2.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-red-50 transition">🗑️ ล้างประวัติ</button>}
+                        </div>
                     </div>
                 </div>
 
-                {/* รายการเหมือนเดิม */}
                 <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2 scrollbar-thin">
                     {filteredTx.length > 0 ? filteredTx.map((tx) => (
                         <div key={tx.id} className="p-4 bg-slate-50 rounded-2xl border shadow-sm flex flex-col gap-3">
-                            <div className="flex justify-between border-b pb-2">
-                                <div className="font-black text-lg">🏠 บ้านเลขที่ {tx.houseNo} <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-lg ml-2">{tx.category}</span></div>
-                                <div className="text-right text-xs"><p className="text-slate-400 font-bold">{tx.date} {tx.time}</p><p className="text-emerald-600 font-black">+{Number(tx.creditAdded || 0).toFixed(4)} kgCO2e</p></div>
+                            <div className="flex flex-col sm:flex-row justify-between sm:items-center border-b pb-3 gap-3">
+                                <div>
+                                    <div className="font-black text-lg flex items-center flex-wrap gap-2">
+                                        🏠 บ้านเลขที่ {tx.houseNo}
+                                        <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-lg">{tx.category}</span>
+                                    </div>
+                                    <div className="mt-1.5">
+                                        <span className="text-[10px] bg-amber-100 text-amber-800 px-2 py-1 rounded-lg font-bold">👤 ผู้คีย์: {tx.operator || 'ไม่ระบุ'}</span>
+                                    </div>
+                                </div>
+
+                                {/* 🌟 กล่องโชว์ยอดเงิน และคาร์บอนที่ได้รับ */}
+                                <div className="text-left sm:text-right bg-white p-3 rounded-xl border border-slate-100 w-fit flex flex-col gap-1 items-start sm:items-end">
+                                    <p className="text-slate-400 font-bold text-[10px] mb-1">{tx.date} {tx.time}</p>
+
+                                    {Number(tx.addedBalance) > 0 && (
+                                        <p className="text-amber-600 font-black text-sm bg-amber-50 px-2 py-0.5 rounded-lg border border-amber-100">
+                                            +฿{Number(tx.addedBalance).toLocaleString()}
+                                        </p>
+                                    )}
+                                    {Number(tx.creditAdded) > 0 && (
+                                        <p className="text-emerald-600 font-black text-sm bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-100">
+                                            +{Number(tx.creditAdded).toFixed(4)} <span className="text-[10px]">kgCO2e</span>
+                                        </p>
+                                    )}
+                                </div>
                             </div>
-                            <div className="flex gap-2">
+
+                            {/* แสดงขยะ */}
+                            <div className="flex flex-wrap gap-2">
                                 {['พลาสติก', 'กระดาษ', 'แก้ว', 'อลูมิเนียม', 'โลหะผสม'].map(type => Number(tx.wasteData?.[type]) > 0 && (
-                                    <span key={type} className="bg-white px-2 py-1 border rounded-lg text-xs font-bold text-blue-600">{type}: {Number(tx.wasteData[type]).toFixed(2)} กก.</span>
+                                    <span key={type} className="bg-white px-2 py-1 border border-slate-200 rounded-lg text-xs font-bold text-blue-600 shadow-sm">{type}: {Number(tx.wasteData[type]).toFixed(2)} กก.</span>
                                 ))}
                             </div>
                         </div>
-                    )) : <p className="text-center text-slate-400 py-10">ยังไม่มีประวัติการฝากขยะในหมวดนี้</p>}
+                    )) : <p className="text-center text-slate-400 py-10">ยังไม่มีประวัติการฝากในหมวดนี้</p>}
                 </div>
             </div>
         </div>
     );
 };
 // === หน้าจอประวัติแอดมิน (AdminLogsView) โฉมใหม่ ===
-const AdminLogsView = ({ adminLogs, db }) => { // 🌟 รับ db
+const AdminLogsView = ({ adminLogs, db }) => {
     const [selectedOperator, setSelectedOperator] = useState('all');
     const uniqueOperators = [...new Set(adminLogs.map(log => log.operator))];
     const filteredLogs = adminLogs.filter(log => selectedOperator === 'all' || log.operator === selectedOperator);
 
     const handleExportExcel = () => {
+        // 🌟 หัวตารางมี "ผู้ดำเนินการ" ชัดเจน
         const headers = ['ลำดับ', 'วันที่', 'เวลา', 'ผู้ดำเนินการ', 'รายละเอียดกิจกรรมที่ทำ'];
         const dataRows = filteredLogs.map((log, i) => [i + 1, log.date, log.time, log.operator, log.action]);
         const rows = [headers, ...dataRows];
@@ -1612,7 +1878,6 @@ const AdminLogsView = ({ adminLogs, db }) => { // 🌟 รับ db
         link.click();
     };
 
-    // 🌟 ฟังก์ชันล้างประวัติจาก Database
     const handleClearLogs = async () => {
         if (!confirm(`⚠️ ยืนยันการ "ล้างประวัติแอดมิน" ของ ${selectedOperator === 'all' ? 'ทุกคน' : selectedOperator} ออกจากฐานข้อมูล?\n(แนะนำให้ Export ไว้ก่อน)`)) return;
         try {
@@ -1628,32 +1893,37 @@ const AdminLogsView = ({ adminLogs, db }) => { // 🌟 รับ db
     return (
         <div className="space-y-4 animate-in fade-in duration-300 text-slate-700">
             <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+
+                {/* 🌟 แก้ไข: จัด Layout ปุ่มให้รองรับมือถือ ไม่หลุดกรอบ */}
                 <div className="flex flex-col lg:flex-row justify-between gap-4 mb-6">
                     <div>
                         <h2 className="font-bold text-xl text-slate-800 flex items-center gap-2"><FileSpreadsheet className="text-red-500" /> บันทึกประวัติกิจกรรมแอดมิน</h2>
+                        <p className="text-sm text-slate-500 mt-1">ตรวจสอบการแก้ไขและบันทึกข้อมูลทุกอย่างที่เกิดขึ้นในระบบ</p>
                     </div>
-                    <div className="flex items-center gap-3">
-                        <select value={selectedOperator} onChange={(e) => setSelectedOperator(e.target.value)} className="bg-slate-50 border p-2 rounded-xl text-sm font-bold outline-none">
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
+                        <select value={selectedOperator} onChange={(e) => setSelectedOperator(e.target.value)} className="bg-slate-50 border p-2.5 rounded-xl text-sm font-bold outline-none w-full sm:w-auto">
                             <option value="all">คัดกรอง: ดูแอดมินทุกคน</option>
                             {uniqueOperators.map((op, i) => <option key={i} value={op}>{op}</option>)}
                         </select>
-                        {filteredLogs.length > 0 && <button onClick={handleExportExcel} className="bg-emerald-50 text-emerald-600 px-4 py-2 rounded-xl font-bold flex gap-2"><Download size={16} /> Export</button>}
-                        {filteredLogs.length > 0 && <button onClick={handleClearLogs} className="bg-white text-red-500 border border-red-200 px-4 py-2 rounded-xl font-bold">🗑️ ล้างประวัติ</button>}
+                        <div className="flex gap-2 w-full sm:w-auto">
+                            {filteredLogs.length > 0 && <button onClick={handleExportExcel} className="flex-1 sm:flex-none bg-emerald-50 text-emerald-600 border border-emerald-200 px-4 py-2.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-emerald-600 hover:text-white transition"><Download size={16} /> Export</button>}
+                            {filteredLogs.length > 0 && <button onClick={handleClearLogs} className="flex-1 sm:flex-none bg-white text-red-500 border border-red-200 px-4 py-2.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-red-50 transition">🗑️ ล้างประวัติ</button>}
+                        </div>
                     </div>
                 </div>
 
-                <div className="space-y-3 max-h-[70vh] overflow-y-auto pr-2">
+                <div className="space-y-3 max-h-[70vh] overflow-y-auto pr-2 scrollbar-thin">
                     {filteredLogs.length > 0 ? filteredLogs.map((log) => (
-                        <div key={log.id} className="flex p-4 bg-slate-50 hover:bg-amber-50/50 rounded-2xl border shadow-sm justify-between items-center">
+                        <div key={log.id} className="flex flex-col sm:flex-row p-4 bg-slate-50 hover:bg-amber-50/50 rounded-2xl border shadow-sm justify-between items-start sm:items-center gap-4">
                             <div>
-                                <span className="bg-amber-100 text-amber-800 text-xs px-2 py-1 rounded-lg font-bold">👤 {log.operator}</span>
-                                <p className="font-bold text-sm text-slate-700 mt-2">{log.action}</p>
+                                <span className="bg-amber-100 text-amber-800 text-xs px-2.5 py-1 rounded-lg font-bold">👤 {log.operator}</span>
+                                <p className="font-bold text-sm text-slate-700 mt-2 bg-white p-2 rounded-xl border border-slate-100 inline-block w-full">{log.action}</p>
                             </div>
-                            <div className="text-right text-xs bg-white px-3 py-1.5 rounded-xl border">
+                            <div className="text-left sm:text-right text-xs bg-white px-3 py-2 rounded-xl border w-full sm:w-auto">
                                 <p className="font-black text-slate-600">{log.time}</p><p className="text-[10px] text-slate-400">{log.date}</p>
                             </div>
                         </div>
-                    )) : <p className="text-center text-slate-400 py-10">ไม่พบประวัติการทำงาน</p>}
+                    )) : <p className="text-center text-slate-400 py-10 bg-slate-50 rounded-2xl border border-dashed">ไม่พบประวัติการทำงาน</p>}
                 </div>
             </div>
         </div>
@@ -1670,15 +1940,18 @@ const LoginView = ({ setIsLoggedIn, staffs, setCurrentUser, logAdminAction }) =>
 
     // ฟังก์ชันตรวจสอบการเข้าสู่ระบบ
     const handleLogin = () => {
-        // วิ่งเช็กในข้อมูลเจ้าหน้าที่ (staffs) ที่ส่งมาจาก App ว่ามีอันที่ตรงกันไหม
         const foundStaff = staffs.find(s => s.username === username && s.password === password);
 
         if (foundStaff) {
-            setIsLoggedIn(true); // อัปเดตสถานะใน App ให้เป็น "ล็อกอินแล้ว"
-            setCurrentUser(foundStaff); // เก็บข้อมูลเจ้าหน้าที่ที่ล็อกอินอยู่
+            setIsLoggedIn(true);
+            localStorage.setItem('is_logged_in', 'true'); // 🌟 จำสถานะเข้าสู่ระบบ
+
+            setCurrentUser(foundStaff);
+            localStorage.setItem('current_user', JSON.stringify(foundStaff)); // 🌟 จำว่าใครล็อกอิน
+
             setError('');
         } else {
-            setError('ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง'); // แสดงข้อความเตือนเมื่อข้อมูลผิด
+            setError('ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
         }
     };
 
@@ -1754,103 +2027,120 @@ const LoginView = ({ setIsLoggedIn, staffs, setCurrentUser, logAdminAction }) =>
         </div>
     );
 };
-// === แผงควบคุมหลักสำหรับเจ้าหน้าที่ (AdminPanel) ===
-// ใช้แสดงเมนูจัดการต่าง ๆ เช่น การลงทะเบียนสมาชิก, บันทึกขยะ หรือดูประวัติ
+// === แผงควบคุมหลักสำหรับเจ้าหน้าที่ (AdminPanel) โฉมใหม่ (Mobile Responsive) ===
 const AdminPanel = ({
     currentUser, setCurrentPage, members, setMembers, editingVillage, setEditingVillage, onDeleteMember,
     isAddMemberOpen, setIsAddMemberOpen, currentLocation, setTempLocation, tempLocation, villageData,
-    setIsPriceEditing, // ตัวรับสัญญาณแก้ไขราคาขยะลัด
-    isRecordWasteOpen, setIsRecordWasteOpen, onSaveWasteRecord // ➕ เสียบปลั๊กเปิดรับตัวแปรบันทึกขยะเพิ่มสะสมรายวันตรงนี้ครับ!
+    setIsPriceEditing, isRecordWasteOpen, setIsRecordWasteOpen, onSaveWasteRecord
 }) => {
     return (
         <div className="space-y-6">
-            <div className="bg-gradient-to-r from-blue-600 to-blue-800 rounded-3xl p-8 text-white shadow-lg">
-                <h2 className="text-3xl font-bold mb-2">
-                    สวัสดีครับ, {currentUser ? currentUser.name : 'เจ้าหน้าที่'} 👋
-                </h2>
-                <p className="opacity-80">ยินดีต้อนรับสู่ระบบจัดการข้อมูลธนาคารขยะเทศบาลตำบลอุโมงค์</p>
+            <div className="relative bg-gradient-to-br from-emerald-500 via-emerald-600 to-emerald-800 rounded-3xl p-6 sm:p-8 text-white shadow-2xl overflow-hidden border border-emerald-400/30">
+                {/* ลายกราฟิกจางๆ เพิ่มความพรีเมียมแบบสว่าง */}
+                <div className="absolute top-0 right-0 -mr-10 -mt-10 w-40 h-40 bg-white/20 rounded-full blur-3xl"></div>
+
+                <div className="relative z-10">
+                    <div className="flex items-center gap-3 mb-4">
+                        <div className="p-2 bg-white/20 rounded-xl backdrop-blur-md border border-white/20">
+                            {/* ใช้ ShieldCheck ตามที่น้าชอบ */}
+                            <ShieldCheck className="text-emerald-50" size={24} />
+                        </div>
+                        <h2 className="text-lg sm:text-2xl font-black tracking-tight text-white">
+                            ระบบจัดการธนาคารขยะบ้านป่าลาน
+                        </h2>
+                    </div>
+
+                    {/* เส้นคั่นพรีเมียม (สีสว่างขึ้น) */}
+                    <div className="w-full h-px bg-gradient-to-r from-transparent via-emerald-200/50 to-transparent my-4"></div>
+
+                    <div className="flex justify-between items-end">
+                        <div>
+                            <p className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-emerald-100/80 mb-1">
+                                ผู้ใช้งานปัจจุบัน
+                            </p>
+                            <p className="text-base sm:text-xl font-bold text-white">
+                                {currentUser ? currentUser.name : 'เจ้าหน้าที่'}
+                            </p>
+                        </div>
+                        <div className="text-right">
+                            <p className="text-[10px] sm:text-xs font-bold text-emerald-100/80 mb-1 uppercase tracking-widest">
+                                สถานะระบบ
+                            </p>
+                            <span className="inline-flex items-center gap-1.5 bg-white/20 text-white px-3 py-1 rounded-full text-[10px] sm:text-xs font-bold border border-white/20">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-300 animate-pulse"></span>
+                                ONLINE
+                            </span>
+                        </div>
+                    </div>
+                </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {/* ปุ่มลงทะเบียนสมาชิกใหม่ */}
-                <button
-                    onClick={() => {
-                        if (typeof setTempLocation === 'function') {
-                            setTempLocation(currentLocation);
-                            setIsAddMemberOpen(true);
-                        }
-                    }}
-                    className="bg-white p-6 rounded-2xl border-2 border-transparent hover:border-blue-500 transition-all shadow-sm text-left group"
-                >
-                    <div className="bg-blue-100 text-blue-600 w-12 h-12 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition">
-                        <MapPin size={24} />
+            {/* 🌟 เปลี่ยนเป็น grid-cols-2 ในมือถือ และลดช่องว่าง (gap) ลง */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
+
+                {/* ปุ่มที่ 1 */}
+                <button onClick={() => { if (typeof setTempLocation === 'function') { setTempLocation(currentLocation); setIsAddMemberOpen(true); } }}
+                    className="bg-white p-4 sm:p-6 rounded-2xl border-2 border-transparent hover:border-blue-500 transition-all shadow-sm flex flex-col items-center sm:items-start text-center sm:text-left group">
+                    <div className="bg-blue-100 text-blue-600 w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center mb-2 sm:mb-4 group-hover:scale-110 transition shrink-0">
+                        <MapPin className="w-5 h-5 sm:w-6 sm:h-6" />
                     </div>
-                    <h3 className="font-bold text-lg text-slate-800">ลงทะเบียนสมาชิกใหม่</h3>
-                    <p className="text-sm text-slate-500">ปักหมุดบ้านและบันทึกข้อมูลสมาชิกใหม่ลงพื้นที่</p>
+                    <h3 className="font-bold text-xs sm:text-lg text-slate-800">ลงทะเบียนสมาชิก</h3>
+                    <p className="text-sm text-slate-500 hidden sm:block mt-1">ปักหมุดบ้านและบันทึกข้อมูลสมาชิกใหม่</p>
                 </button>
 
-                {/* 🔄 [ชุบชีวิตปุ่มบันทึกขยะจริง]: กดแล้วสั่งให้เปิดหน้าต่างกรอกน้ำหนักขยะสะสมทันที ไม่ขึ้น Alert หลอกแล้ว */}
-                <button
-                    onClick={() => setIsRecordWasteOpen(true)}
-                    className="bg-white p-6 rounded-2xl border-2 border-transparent hover:border-emerald-500 transition-all shadow-sm text-left group"
-                >
-                    <div className="bg-emerald-100 text-emerald-600 w-12 h-12 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition">
-                        <PlusCircle size={24} />
+                {/* ปุ่มที่ 2 */}
+                <button onClick={() => setIsRecordWasteOpen(true)}
+                    className="bg-white p-4 sm:p-6 rounded-2xl border-2 border-transparent hover:border-emerald-500 transition-all shadow-sm flex flex-col items-center sm:items-start text-center sm:text-left group">
+                    <div className="bg-emerald-100 text-emerald-600 w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center mb-2 sm:mb-4 group-hover:scale-110 transition shrink-0">
+                        <PlusCircle className="w-5 h-5 sm:w-6 sm:h-6" />
                     </div>
-                    <h3 className="font-bold text-lg text-slate-800">บันทึกการทิ้งขยะ</h3>
-                    <p className="text-sm text-slate-500">บันทึกประเภทและน้ำหนักขยะเพิ่มสะสมรวมลงรายครัวเรือน</p>
+                    <h3 className="font-bold text-xs sm:text-lg text-slate-800">บันทึกการทิ้งขยะ</h3>
+                    <p className="text-sm text-slate-500 hidden sm:block mt-1">บันทึกประเภท น้ำหนัก และเงินฝากเพิ่ม</p>
                 </button>
 
-                {/* ปุ่มจัดการสมาชิก */}
-                <button onClick={() => setCurrentPage('members')} className="bg-white p-6 rounded-2xl border-2 border-transparent hover:border-blue-500 transition-all shadow-sm text-left group">
-                    <div className="bg-green-100 text-green-600 w-12 h-12 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition">
-                        <Users size={24} />
+                {/* ปุ่มที่ 3 */}
+                <button onClick={() => setCurrentPage('members')} className="bg-white p-4 sm:p-6 rounded-2xl border-2 border-transparent hover:border-blue-500 transition-all shadow-sm flex flex-col items-center sm:items-start text-center sm:text-left group">
+                    <div className="bg-green-100 text-green-600 w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center mb-2 sm:mb-4 group-hover:scale-110 transition shrink-0">
+                        <Users className="w-5 h-5 sm:w-6 sm:h-6" />
                     </div>
-                    <h3 className="font-bold text-lg text-slate-800">จัดการรายชื่อสมาชิก</h3>
-                    <p className="text-sm text-slate-500">เพิ่ม/ลบ หรือแก้ไขข้อมูลบ้านสมาชิก</p>
+                    <h3 className="font-bold text-xs sm:text-lg text-slate-800">จัดการรายชื่อสมาชิก</h3>
+                    <p className="text-sm text-slate-500 hidden sm:block mt-1">เพิ่ม/ลบ หรือแก้ไขข้อมูลบ้านสมาชิก</p>
                 </button>
 
-                {/* ปุ่มแก้ไขราคาขยะลัด */}
-                <button
-                    onClick={() => {
-                        setCurrentPage('prices');
-                        if (typeof setIsPriceEditing === 'function') { setIsPriceEditing(true); }
-                    }}
-                    className="bg-white p-6 rounded-2xl border-2 border-transparent hover:border-amber-500 transition-all shadow-sm text-left group"
-                >
-                    <div className="bg-amber-100 text-amber-600 w-12 h-12 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition">
-                        <Database size={24} />
+                {/* ปุ่มที่ 4 */}
+                <button onClick={() => { setCurrentPage('prices'); if (typeof setIsPriceEditing === 'function') { setIsPriceEditing(true); } }} className="bg-white p-4 sm:p-6 rounded-2xl border-2 border-transparent hover:border-amber-500 transition-all shadow-sm flex flex-col items-center sm:items-start text-center sm:text-left group">
+                    <div className="bg-amber-100 text-amber-600 w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center mb-2 sm:mb-4 group-hover:scale-110 transition shrink-0">
+                        <Database className="w-5 h-5 sm:w-6 sm:h-6" />
                     </div>
-                    <h3 className="font-bold text-lg text-slate-800">แก้ไขราคารับซื้อขยะ</h3>
-                    <p className="text-sm text-slate-500">ปรับเปลี่ยนมูลค่าราคากลางขยะ 5 ประเภทประจำเดือน</p>
-                </button>
-                {/* ปุ่มจัดการยอดเงินสมาชิก */}
-                <button
-                    onClick={() => setCurrentPage('manageBalance')}
-                    className="bg-white p-6 rounded-2xl border-2 border-transparent hover:border-emerald-500 transition-all shadow-sm text-left group"
-                >
-                    <div className="bg-emerald-100 text-emerald-600 w-12 h-12 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition">
-                        <Wallet size={24} />
-                    </div>
-                    <h3 className="font-bold text-lg text-slate-800">จัดการยอดเงินสมาชิก</h3>
-                    <p className="text-sm text-slate-500">แก้ไขยอดเงินคงเหลือของครัวเรือนรายหมวดแบบเร่งด่วน</p>
-                </button>
-                {/* ปุ่มดูประวัติรายบ้าน */}
-                <button onClick={() => setCurrentPage('history')} className="bg-white p-6 rounded-2xl border-2 border-transparent hover:border-purple-500 transition-all shadow-sm text-left group">
-                    <div className="bg-purple-100 text-purple-600 w-12 h-12 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition">
-                        <History size={24} />
-                    </div>
-                    <h3 className="font-bold text-lg text-slate-800">สรุปยอดรายครัวเรือน</h3>
-                    <p className="text-sm text-slate-500">ดูสถิติน้ำหนักขยะสะสมและแต้มรวมของสมาชิกแต่ละบ้าน</p>
+                    <h3 className="font-bold text-xs sm:text-lg text-slate-800">แก้ไขราคารับซื้อ</h3>
+                    <p className="text-sm text-slate-500 hidden sm:block mt-1">ปรับเปลี่ยนมูลค่าราคากลางรายเดือน</p>
                 </button>
 
-                {/* ปุ่มประวัติงานเจ้าหน้าที่ */}
-                <button onClick={() => setCurrentPage('admin_logs')} className="bg-white p-6 rounded-2xl border-2 border-transparent hover:border-red-500 transition-all shadow-sm text-left group">
-                    <div className="bg-red-100 text-red-600 w-12 h-12 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition">
-                        <FileSpreadsheet size={24} />
+                {/* ปุ่มที่ 5 */}
+                <button onClick={() => setCurrentPage('manageBalance')} className="bg-white p-4 sm:p-6 rounded-2xl border-2 border-transparent hover:border-emerald-500 transition-all shadow-sm flex flex-col items-center sm:items-start text-center sm:text-left group">
+                    <div className="bg-emerald-100 text-emerald-600 w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center mb-2 sm:mb-4 group-hover:scale-110 transition shrink-0">
+                        <Wallet className="w-5 h-5 sm:w-6 sm:h-6" />
                     </div>
-                    <h3 className="font-bold text-lg text-slate-800">ประวัติงานเจ้าหน้าที่</h3>
-                    <p className="text-sm text-slate-500">ตรวจสอบบันทึก Log กิจกรรมการแก้ไขระบบเบื้องหลังของแอดมิน</p>
+                    <h3 className="font-bold text-xs sm:text-lg text-slate-800">จัดการยอดเงิน</h3>
+                    <p className="text-sm text-slate-500 hidden sm:block mt-1">แก้ไข หรือ หักเงินสมาชิกแบบกลุ่ม</p>
+                </button>
+
+                {/* ปุ่มที่ 6 */}
+                <button onClick={() => setCurrentPage('history')} className="bg-white p-4 sm:p-6 rounded-2xl border-2 border-transparent hover:border-purple-500 transition-all shadow-sm flex flex-col items-center sm:items-start text-center sm:text-left group">
+                    <div className="bg-purple-100 text-purple-600 w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center mb-2 sm:mb-4 group-hover:scale-110 transition shrink-0">
+                        <History className="w-5 h-5 sm:w-6 sm:h-6" />
+                    </div>
+                    <h3 className="font-bold text-xs sm:text-lg text-slate-800">ประวัติรายครัวเรือน</h3>
+                    <p className="text-sm text-slate-500 hidden sm:block mt-1">ดูสถิติและล้างข้อมูลประจำเดือน</p>
+                </button>
+
+                {/* ปุ่มที่ 7 */}
+                <button onClick={() => setCurrentPage('admin_logs')} className="bg-white p-4 sm:p-6 rounded-2xl border-2 border-transparent hover:border-red-500 transition-all shadow-sm flex flex-col items-center sm:items-start text-center sm:text-left group">
+                    <div className="bg-red-100 text-red-600 w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center mb-2 sm:mb-4 group-hover:scale-110 transition shrink-0">
+                        <FileSpreadsheet className="w-5 h-5 sm:w-6 sm:h-6" />
+                    </div>
+                    <h3 className="font-bold text-xs sm:text-lg text-slate-800">ประวัติงานแอดมิน</h3>
+                    <p className="text-sm text-slate-500 hidden sm:block mt-1">ตรวจสอบบันทึกการทำงานในระบบ</p>
                 </button>
             </div>
 
@@ -2398,7 +2688,9 @@ const AddMemberModal = ({ initialLat, initialLng, villageData, onSave, onClose }
                 });
             }
         };
-
+        setTimeout(() => {
+            miniMap.invalidateSize();
+        }, 300);
         return () => miniMap.remove();
     }, [initialLat, initialLng]);
 
@@ -2540,6 +2832,8 @@ const RecordWasteModal = ({ members, onSave, onClose }) => {
     const [wasteInputs, setWasteInputs] = useState({
         'พลาสติก': '', 'กระดาษ': '', 'แก้ว': '', 'อลูมิเนียม': '', 'โลหะผสม': ''
     });
+    // 🌟 สเตตัสสำหรับเก็บยอดเงินที่ต้องการบวกเพิ่มให้สมาชิก
+    const [addedBalance, setAddedBalance] = useState('');
 
     // 🌍 สูตรคำนวณคาร์บอนเครดิตใหม่
     const CARBON_MULTIPLIERS = {
@@ -2561,23 +2855,23 @@ const RecordWasteModal = ({ members, onSave, onClose }) => {
         <div className="fixed inset-0 bg-black/70 z-[9999] flex items-center justify-center p-4 backdrop-blur-sm">
             <div className="bg-white rounded-3xl w-full max-w-xl overflow-hidden flex flex-col shadow-2xl max-h-[90vh] text-slate-700">
                 {/* ส่วนหัว Header */}
-                <div className="p-6 bg-emerald-600 text-white flex justify-between items-center">
+                <div className="p-6 bg-emerald-600 text-white flex justify-between items-center shrink-0">
                     <div>
-                        <h3 className="font-bold text-xl flex items-center gap-2">⚖️ บันทึกน้ำหนักขยะนำฝากเพิ่ม</h3>
-                        <p className="text-xs text-emerald-100 mt-0.5">เลือกบ้านเลขที่และกรอกน้ำหนักเพื่อคำนวณคาร์บอนเครดิต</p>
+                        <h3 className="font-bold text-xl flex items-center gap-2">⚖️ บันทึกฝากขยะและยอดเงิน</h3>
+                        <p className="text-xs text-emerald-100 mt-0.5">คีย์น้ำหนักขยะเพื่อคิดคาร์บอน และใส่ยอดเงินฝากเข้าบัญชี</p>
                     </div>
                     <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition text-white">✕</button>
                 </div>
 
                 {/* ส่วนฟอร์มกรอกข้อมูล */}
-                <div className="p-6 space-y-5 overflow-y-auto flex-grow">
+                <div className="p-6 space-y-5 overflow-y-auto flex-grow scrollbar-thin">
                     {/* 1. เลือกบ้านเลขที่สมาชิก */}
                     <div>
                         <label className="block text-sm font-bold mb-1.5 text-slate-700">🏠 เลือกครัวเรือนสมาชิก (หมู่ 6)</label>
                         <select
                             value={selectedMemberId}
                             onChange={(e) => setSelectedMemberId(e.target.value)}
-                            className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none bg-slate-50 font-bold text-slate-700 focus:border-emerald-500"
+                            className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none bg-slate-50 font-bold text-slate-700 focus:border-emerald-500 cursor-pointer"
                         >
                             <option value="">-- กรุณาเลือกบ้านเลขที่สมาชิก --</option>
                             {members && members.map(m => (
@@ -2615,24 +2909,49 @@ const RecordWasteModal = ({ members, onSave, onClose }) => {
                         </div>
                     </div>
 
-                    {/* 3. กล่องโชว์คาร์บอนเครดิตที่จะได้รับ */}
-                    <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 flex justify-between items-center shadow-sm">
-                        <span className="font-bold text-emerald-800 text-sm">🌱 คาร์บอนเครดิตที่จะได้รับเพิ่ม:</span>
-                        <span className="text-xl font-black text-emerald-600 font-mono">
-                            +{currentTurnCarbon.toFixed(4)} kgCO2e
-                        </span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {/* 🌟 3. กรอกยอดเงิน (เพิ่มใหม่) */}
+                        <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 shadow-sm flex flex-col justify-center">
+                            <label className="block text-sm font-bold text-amber-800 mb-2">💰 ยอดเงินฝากเข้าบัญชี</label>
+                            <div className="relative">
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold">฿</span>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    step="any"
+                                    placeholder="0.00"
+                                    value={addedBalance}
+                                    onChange={(e) => setAddedBalance(e.target.value)}
+                                    className="w-full border-2 border-white focus:border-amber-400 outline-none text-right font-black text-amber-600 pl-8 pr-3 py-2 rounded-xl"
+                                />
+                            </div>
+                        </div>
+
+                        {/* 4. กล่องโชว์คาร์บอนเครดิตที่จะได้รับ */}
+                        <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 flex flex-col justify-center items-end text-right shadow-sm">
+                            <span className="font-bold text-emerald-800 text-xs mb-1">🌱 คาร์บอนที่จะได้รับเพิ่ม</span>
+                            <span className="text-xl font-black text-emerald-600 font-mono">
+                                +{currentTurnCarbon.toFixed(4)} <span className="text-[10px] text-emerald-500">kgCO₂e</span>
+                            </span>
+                        </div>
                     </div>
                 </div>
 
                 {/* ปุ่มควบคุมล่างสุด */}
-                <div className="p-6 bg-slate-50 border-t flex gap-3">
+                <div className="p-6 bg-slate-50 border-t flex gap-3 shrink-0">
                     <button type="button" onClick={onClose} className="flex-1 py-3.5 font-bold text-slate-400 hover:text-slate-600 transition">ยกเลิก</button>
                     <button
                         type="button"
                         onClick={() => {
                             if (!selectedMemberId) return alert("❌ กรุณาเลือกบ้านเลขที่สมาชิกก่อนบันทึกครับ");
-                            const hasValues = Object.values(wasteInputs).some(v => Number(v) > 0);
-                            if (!hasValues) return alert("❌ กรุณากรอกน้ำหนักขยะอย่างน้อย 1 ประเภทครับ");
+
+                            const hasWaste = Object.values(wasteInputs).some(v => Number(v) > 0);
+                            const finalBalance = Number(addedBalance) || 0;
+
+                            // 🌟 ตรวจสอบว่าต้องใส่อย่างน้อย 1 อย่าง (ขยะ หรือ เงิน)
+                            if (!hasWaste && finalBalance <= 0) {
+                                return alert("❌ กรุณากรอกน้ำหนักขยะ หรือ ยอดเงิน อย่างน้อย 1 อย่างครับ");
+                            }
 
                             const finalTurnWaste = {
                                 'พลาสติก': Number(wasteInputs['พลาสติก']) || 0,
@@ -2642,12 +2961,12 @@ const RecordWasteModal = ({ members, onSave, onClose }) => {
                                 'โลหะผสม': Number(wasteInputs['โลหะผสม']) || 0
                             };
 
-                            // ส่งค่าคาร์บอนที่คำนวณได้ออกไป
-                            onSave(selectedMemberId, finalTurnWaste, Number(currentTurnCarbon.toFixed(4)));
+                            // 🌟 ส่งค่าเงินเข้าไปด้วยเป็นตัวแปรที่ 4
+                            onSave(selectedMemberId, finalTurnWaste, Number(currentTurnCarbon.toFixed(4)), finalBalance);
                         }}
                         className="flex-[2] bg-emerald-600 text-white py-3.5 rounded-2xl font-bold shadow-lg hover:bg-emerald-700 transition"
                     >
-                        💾 ยืนยันบันทึกน้ำหนักขยะ
+                        💾 ยืนยันบันทึกข้อมูล
                     </button>
                 </div>
             </div>
@@ -2692,39 +3011,40 @@ const App = () => {
         });
     }, []);
 
-    useEffect(() => {
-        const fetchData = async () => {
-            // ดึงจาก firebase โดยตรง (ตรวจสอบว่า import ไว้ข้างบนแล้ว)
-            try {
-                // 1. ดึงข้อมูลสมาชิก
-                const memberSnapshot = await getDocs(collection(db, "members"));
-                const membersData = memberSnapshot.docs.map(doc => {
-                    const data = doc.data();
+    // 🌟 ฟังก์ชันแกนกลางสำหรับโหลดข้อมูลจาก DB (เรียกใช้เมื่อเปิดเว็บ หรือหลังกดเซฟ)
+    const refreshData = async () => {
+        try {
+            // 1. โหลดข้อมูลสมาชิก
+            const memberSnap = await getDocs(collection(db, "members"));
+            const membersData = memberSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            setMembers(membersData);
+            setAllMembers(membersData);
+            localStorage.setItem('local_members_data', JSON.stringify(membersData));
 
-                    return { id: doc.id, ...data };
-                });
-                // น้าอัปเดต State ตรงๆ เลยครับ ไม่ต้องเช็ค length > 0
-                setMembers(membersData);
-                localStorage.setItem('local_members_data', JSON.stringify(membersData));
-
-                // 2. ดึงข้อมูลหมู่บ้าน
-                const villageSnapshot = await getDocs(collection(db, "villages"));
-                const villagesData = villageSnapshot.docs.map(doc => doc.data());
-
-                // ถ้ามีข้อมูลใน Firebase ค่อยอัปเดต ถ้าไม่มีให้ใช้ค่าเริ่มต้นที่น้ากำหนดไว้ใน State
-                if (villagesData.length > 0) {
-                    setVillages(villagesData);
-                    localStorage.setItem('village_data', JSON.stringify(villagesData));
-                }
-            } catch (error) {
-                console.error("ดึงข้อมูลผิดพลาด:", error);
-                // ถ้าดึงไม่ได้ ให้ดึงจาก localStorage ออกมาแสดงแทน
-                const savedMembers = localStorage.getItem('local_members_data');
-                if (savedMembers) setMembers(JSON.parse(savedMembers));
+            // 2. โหลดข้อมูลหมู่บ้าน
+            const villageSnap = await getDocs(collection(db, "villages"));
+            const villagesData = villageSnap.docs.map(doc => doc.data());
+            if (villagesData.length > 0) {
+                setVillages(villagesData);
+                localStorage.setItem('village_data', JSON.stringify(villagesData));
             }
-        };
 
-        fetchData();
+            // 3. โหลดประวัติแอดมิน (เอาแค่ 200 รายการล่าสุด จะได้ไม่หนัก)
+            const logsSnap = await getDocs(query(collection(db, "admin_logs"), orderBy("timestamp", "desc"), limit(200)));
+            setAdminLogs(logsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+
+            // 4. โหลดประวัติฝากขยะ (เอาแค่ 200 รายการล่าสุด)
+            const txSnap = await getDocs(query(collection(db, "waste_transactions"), orderBy("timestamp", "desc"), limit(200)));
+            setTransactions(txSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+
+        } catch (error) {
+            console.error("ดึงข้อมูลผิดพลาด:", error);
+        }
+    };
+
+    // สั่งให้ดึงข้อมูลครั้งแรก เมื่อเปิดเว็บ
+    useEffect(() => {
+        refreshData();
     }, []);
 
     const fetchAllMembersForStats = async () => {
@@ -2772,11 +3092,11 @@ const App = () => {
         loadLogsFromCloud();
     }, []);
 
-    // ☁️ [ปรับเป็นระบบคลาวด์]: ฟังก์ชันสำหรับคำนวณและบวกน้ำหนักขยะ/แต้มสะสมเพิ่มรายครัวเรือนพุ่งขึ้น Firebase
-    const handleSaveWasteRecord = async (memberId, turnWasteData, turnCredit) => {
+    // ☁️ ฟังก์ชันสำหรับบันทึกน้ำหนักขยะและยอดเงิน พุ่งขึ้น Firebase
+    const handleSaveWasteRecord = async (memberId, turnWasteData, turnCredit, addedBalance) => {
         let targetHouseNo = '';
 
-        // 1. วิ่งไปค้นหาตัวสมาชิกรายนั้นใน State ปัจจุบัน
+        // 1. ค้นหาตัวสมาชิก
         const targetMemberObj = members.find(m => String(m.id) === String(memberId));
         if (!targetMemberObj) return alert("❌ ไม่พบข้อมูลสมาชิกรายนี้ในระบบ");
 
@@ -2788,10 +3108,13 @@ const App = () => {
             nextWasteData[type] = (Number(nextWasteData[type]) || 0) + (Number(turnWasteData[type]) || 0);
         });
 
+        const finalBalanceToAdd = Number(addedBalance) || 0; // ยอดเงินฝากเพิ่ม
+
         const updatedMember = {
             ...targetMemberObj,
             wasteData: nextWasteData,
             credit: (Number(targetMemberObj.credit) || 0) + Number(turnCredit),
+            balance: (Number(targetMemberObj.balance) || 0) + finalBalanceToAdd, // 🌟 บวกยอดเงินให้สมาชิก
             isSorted: true
         };
 
@@ -2800,14 +3123,14 @@ const App = () => {
         setMembers(updatedMembers);
         localStorage.setItem('local_members_data', JSON.stringify(updatedMembers));
 
-        // 3. ☁️ ยิงอัปเดตขึ้น Cloud
+        // 3. ☁️ ยิงอัปเดตสมาชิกขึ้น Cloud
         try {
             await setDoc(doc(db, "members", String(memberId)), updatedMember);
         } catch (err) {
             console.error("เซฟยอดขยะลงคลาวด์ล้มเหลว:", err);
         }
 
-        // 4. นำปริมาณขยะรอบนี้ วิ่งไปบวกสะสมเพิ่มรวมเข้ากับ "หมวดใหญ่"
+        // 4. นำปริมาณขยะวิ่งไปบวกสะสมเพิ่มให้ "หมวดใหญ่"
         setVillages(prevVillages => {
             const updatedVillages = prevVillages.map(v => {
                 if (v.id === targetMemberObj.villageId) {
@@ -2818,7 +3141,8 @@ const App = () => {
                     return {
                         ...v,
                         wasteData: nextVillageWaste,
-                        credit: (Number(v.credit) || 0) + Number(turnCredit)
+                        credit: (Number(v.credit) || 0) + Number(turnCredit),
+                        totalBalance: (Number(v.totalBalance) || 0) + finalBalanceToAdd // 🌟 บวกเงินให้หมวด
                     };
                 }
                 return v;
@@ -2827,22 +3151,67 @@ const App = () => {
             return updatedVillages;
         });
 
-        // 5. บันทึกประวัติและแจ้งเตือน
+        // =======================================================
+        // 🌟 5. บันทึกประวัติและแจ้งเตือน (Admin Logs) - เวอร์ชันใหม่โชว์เงิน
+        // =======================================================
         const typesSummary = Object.entries(turnWasteData)
             .filter(([_, w]) => w > 0)
             .map(([t, w]) => `${t} ${w} กก.`)
             .join(', ');
 
-        logAdminAction(`บันทึกฝากขยะเพิ่มให้ "บ้านเลขที่ ${targetHouseNo}" สถิติ: [${typesSummary}] (+${turnCredit} แต้ม)`);
+        let logMessage = `บันทึกข้อมูลให้ "บ้านเลขที่ ${targetHouseNo}" `;
+        if (typesSummary) logMessage += `| ขยะ: [${typesSummary}] (+${turnCredit.toFixed(4)} kgCO2e) `;
+        if (finalBalanceToAdd > 0) logMessage += `| ฝากเงิน: +฿${finalBalanceToAdd.toLocaleString()} `;
+
+        logAdminAction(logMessage);
+
+        // =======================================================
+        // 🌟 6. ยิง "ประวัติฝากขยะ (History)" ขึ้น Firebase
+        // =======================================================
+        const now = new Date();
+        const ThaiMonths = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+        const timeString = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')} น.`;
+        const dateString = `${now.getDate()} ${ThaiMonths[now.getMonth()]} ${now.getFullYear() + 543}`;
+
+        const newTx = {
+            houseNo: targetHouseNo,
+            villageId: targetMemberObj.villageId,
+            category: targetMemberObj.category,
+            wasteData: turnWasteData,
+            creditAdded: turnCredit,
+            addedBalance: finalBalanceToAdd, // 🌟 แนบยอดเงินเข้าไปในประวัติด้วย
+            date: dateString,
+            time: timeString,
+            operator: currentUser ? currentUser.name : 'เจ้าหน้าที่ระบบ',
+            timestamp: serverTimestamp()
+        };
+
+        try {
+            await addDoc(collection(db, "waste_transactions"), newTx);
+        } catch (err) {
+            console.error("เซฟประวัติพลาด:", err);
+        }
+
+        // =======================================================
+        // 🌟 7. สั่งโหลดข้อมูลใหม่ให้หน้าจออัปเดตทันที
+        // =======================================================
+        if (typeof refreshData === 'function') {
+            await refreshData();
+        }
 
         setIsRecordWasteOpen(false);
-        alert(`⚖️ บันทึกยอดขยะฝากเพิ่มสะสม และคำนวณแต้มสำเร็จ!`);
+        alert(`⚖️ บันทึกรายการสำเร็จ!`);
     };
     const [expandedMemberId, setExpandedMemberId] = React.useState(null); // ➕ บันทึกว่ากล่องของบ้านหลังไหนกำลังถูกคลิกเปิดดูรายชื่อ
     // สถานะหน้าจอและเมนู
     const [currentPage, setCurrentPage] = useState('dashboard'); // ควบคุมว่าตอนนี้อยู่หน้าไหน
+    // 🌟 เปลี่ยนการจำสถานะล็อกอิน ให้จำชื่อแอดมินด้วย
     const [isLoggedIn, setIsLoggedIn] = useState(() => {
         return localStorage.getItem('is_logged_in') === 'true';
+    });
+    const [currentUser, setCurrentUser] = useState(() => {
+        const savedUser = localStorage.getItem('current_user');
+        return savedUser ? JSON.parse(savedUser) : null;
     });
 
     // ทุกครั้งที่เปลี่ยนสถานะ login ให้เซฟลง storage
@@ -2856,7 +3225,7 @@ const App = () => {
     const [members, setMembers] = useState([]);
     const [allMembers, setAllMembers] = useState([]);
     const [currentLocation, setCurrentLocation] = useState({ lat: 18.5244, lng: 99.0435 }); // จุดกึ่งกลางแผนที่ (อุโมงค์)
-    const [currentUser, setCurrentUser] = useState(null);       // ข้อมูลแอดมินที่ล็อกอินอยู่
+    // ข้อมูลแอดมินที่ล็อกอินอยู่
 
     // ข้อมูลสำหรับการแก้ไขและแจ้งเตือน
     const [selectedVillage, setSelectedVillage] = useState(null);
@@ -2864,6 +3233,12 @@ const App = () => {
     const [showValidationAlert, setShowValidationAlert] = useState(false);
     const [visitorStats, setVisitorStats] = useState({ today: 0, month: 0, total: 0 });
     const [isPriceEditing, setIsPriceEditing] = useState(false);
+    useEffect(() => {
+        // ถ้าย้ายไปหน้าอื่นที่ไม่ใช่หน้าตั้งราคา ('prices') ให้ปิดโหมดแก้ไขทันที
+        if (currentPage !== 'prices') {
+            setIsPriceEditing(false);
+        }
+    }, [currentPage]);
 
     // 📡 [ปรับเป็นระบบคลาวด์]: ตั้งค่าประวัติแอดมินเริ่มต้นเป็นกล่องเปล่าเพื่อรอดึงจากอินเทอร์เน็ต
     const [adminLogs, setAdminLogs] = useState([]);
@@ -2968,7 +3343,7 @@ const App = () => {
     const handleUpdateVillage = async (updatedVillage) => {
         try {
             // 1. อัปเดตขึ้น Firebase
-            await setDoc(doc(db, "villages", String(updatedVillage.id)), updatedVillage);
+            await setDoc(doc(db, "villages", String(updatedVillage.id)), updatedVillage); await refreshData();
 
             // 2. อัปเดต State และ LocalStorage
             setVillages(prevVillages => {
@@ -2982,7 +3357,7 @@ const App = () => {
                 setSelectedVillage(updatedVillage);
             }, 0);
 
-            setEditingVillage(null);
+            setEditingVillage(null); refreshData();
         } catch (error) {
             console.error("อัปเดตข้อมูลหมู่บ้านล้มเหลว:", error);
             alert("❌ อัปเดตหมวดหมู่ลง Cloud ไม่สำเร็จ!");
@@ -3107,7 +3482,6 @@ const App = () => {
                 return <VillagesView villageData={villageData} setSelectedVillage={setSelectedVillage} setCurrentPage={setCurrentPage} isLoggedIn={isLoggedIn} setEditingVillage={setEditingVillage} />;
 
             case 'prices':
-                // 🔄 [แก้ไขสายส่ง Props]: ผูกส่งสเตตัสแก้ไขราคาขยะลัดข้ามหน้าจอไปควบคุมที่นี่
                 return (
                     <PriceView
                         isLoggedIn={isLoggedIn}
@@ -3127,11 +3501,11 @@ const App = () => {
 
             case 'history':
                 // 🔄 [แก้ไขเปิดทำงานจริง]: ดีดส่งตัวแปร members เข้าหน้าประวัติเพื่อทำการแจกแจงรายบ้านจริง
-                return <HistoryView members={members} />;
+                return <HistoryView transactions={transactions} villages={villages} db={db} refreshData={refreshData} />;
 
             case 'admin_logs':
-                // ส่งต่อสเตตัสแอดมินล็อกเข้าไปทำงานในหน้าแยกได้อย่างปลอดภัย หน้าไม่ขาวแล้ว
-                return <AdminLogsView adminLogs={adminLogs} setAdminLogs={setAdminLogs} />;
+                // ส่งต่อสเตตัสแอดมินล็อกเข้าไปทำงานในหน้าแยกได้อย่างปลอดภัย
+                return <AdminLogsView adminLogs={adminLogs} setAdminLogs={setAdminLogs} />; return <AdminLogsView adminLogs={adminLogs} db={db} refreshData={refreshData} />;
             case 'manageBalance':
                 return (
                     <ManageBalanceView
@@ -3203,7 +3577,7 @@ const App = () => {
         <div className="flex min-h-screen bg-[#f8fafc] font-sans text-slate-800">
 
             {/* ── 🟢 1. แถบเมนูข้าง Sidebar (แสดงเฉพาะจอ Desktop เท่านั้น) ── */}
-            <aside className="hidden md:flex w-72 flex-col bg-gradient-to-b from-[#69c962] to-[#55b66c] p-6 shadow-xl shrink-0 select-none sticky top-0 h-screen overflow-y-auto">
+            <aside className="hidden md:flex w-72 flex-col bg-gradient-to-b from-emerald-500 to-emerald-700 p-6 shadow-2xl shrink-0 sticky top-0 h-screen overflow-y-auto select-none border-r border-emerald-600/30">
 
                 {/* โลโก้และชื่อเว็บ (จัดเรียงใหม่ ปรับขนาดใหญ่ขึ้น และวางกึ่งกลาง) */}
                 <div className="flex flex-col items-center text-center gap-3 mb-6 cursor-pointer border-b border-white/30 pb-6 mt-2" onClick={() => { setCurrentPage('dashboard'); setIsMapLoaded(false); }}>
@@ -3275,9 +3649,23 @@ const App = () => {
                     </h2>
                     <div>
                         {!isLoggedIn ? (
-                            <button onClick={() => setCurrentPage('admin')} className="bg-slate-50 border border-slate-200 hover:bg-slate-100 text-slate-700 px-5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm"><LogIn size={14} /> <span>เข้าสู่ระบบ</span></button>
+                            <button onClick={() => setCurrentPage('admin')} className="bg-slate-50 border border-slate-200 hover:bg-slate-100 text-slate-700 px-5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm">
+                                <LogIn size={14} /> <span>เข้าสู่ระบบ</span>
+                            </button>
                         ) : (
-                            <button onClick={() => { setIsLoggedIn(false); setCurrentPage('dashboard'); }} className="bg-red-50 hover:bg-red-100 text-red-600 px-5 py-2.5 rounded-xl text-xs font-bold transition-all border border-red-100 flex items-center gap-1.5 shadow-sm"><LogIn size={14} className="rotate-180" /> <span>ออกจากระบบ</span></button>
+                            <button
+                                onClick={() => {
+                                    // 🌟 ล้างค่าออกจากระบบแบบหมดจด (ฝั่ง Desktop)
+                                    setIsLoggedIn(false);
+                                    setCurrentUser(null);
+                                    localStorage.removeItem('is_logged_in');
+                                    localStorage.removeItem('current_user');
+                                    setCurrentPage('dashboard');
+                                }}
+                                className="bg-red-50 hover:bg-red-100 text-red-600 px-5 py-2.5 rounded-xl text-xs font-bold transition-all border border-red-100 flex items-center gap-1.5 shadow-sm"
+                            >
+                                <LogIn size={14} className="rotate-180" /> <span>ออกจากระบบ</span>
+                            </button>
                         )}
                     </div>
                 </header>
@@ -3289,7 +3677,22 @@ const App = () => {
                             <img src={webLogo} alt="โลโก้" className="w-8 h-8 object-contain bg-white rounded-lg p-0.5" />
                             <span className="font-black text-sm text-white tracking-tight">ธนาคารขยะบ้านป่าลาน</span>
                         </div>
-                        <button onClick={() => { if (isLoggedIn) { setIsLoggedIn(false); setCurrentPage('dashboard'); } else { setCurrentPage('admin'); } }} className="bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded-xl text-xs font-bold border border-white/20 transition-colors">
+                        <button
+                            onClick={() => {
+                                if (isLoggedIn) {
+                                    // 🌟 กรณี "ออกจากระบบ" (ล้างค่าที่เครื่องจำไว้ทั้งหมด)
+                                    setIsLoggedIn(false);
+                                    setCurrentUser(null);
+                                    localStorage.removeItem('is_logged_in');
+                                    localStorage.removeItem('current_user');
+                                    setCurrentPage('dashboard');
+                                } else {
+                                    // 🌟 กรณี "เข้าสู่ระบบ"
+                                    setCurrentPage('admin');
+                                }
+                            }}
+                            className="bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded-xl text-xs font-bold border border-white/20 transition-colors"
+                        >
                             {isLoggedIn ? 'ออกจากระบบ' : 'เข้าสู่ระบบ'}
                         </button>
                     </div>
@@ -3367,7 +3770,7 @@ const App = () => {
                         const dataToSave = { ...newMemberData, villageId: Number(newMemberData.villageId) };
                         try { await setDoc(doc(db, "members", String(newMemberData.id)), newMemberData); }
                         catch (error) { alert("บันทึกเข้าฐานข้อมูลไม่สำเร็จ!"); return; }
-                        logAdminAction(`ได้ลงทะเบียนและปักหมุดสมาชิกใหม่ "บ้านเลขที่ ${newMemberData.houseNo}" เข้าสู่หมวดระบบ`);
+                        logAdminAction(`ได้ลงทะเบียนและปักหมุดสมาชิกใหม่ "บ้านเลขที่ ${newMemberData.houseNo}" เข้าสู่หมวดระบบ`); await refreshData();
                         setMembers(prev => {
                             const nextMembers = [...prev, newMemberData];
                             localStorage.setItem('local_members_data', JSON.stringify(nextMembers));
@@ -3387,7 +3790,7 @@ const App = () => {
                             localStorage.setItem('village_data', JSON.stringify(updatedVillages));
                             return updatedVillages;
                         });
-                        setIsAddMemberOpen(false); setTempLocation(null); alert("📍 ลงทะเบียนสมาชิกครัวเรือนใหม่สำเร็จ!");
+                        setIsAddMemberOpen(false); setTempLocation(null); alert("📍 ลงทะเบียนสมาชิกครัวเรือนใหม่สำเร็จ!"); refreshData();
                     }}
                     onClose={() => { setIsAddMemberOpen(false); setTempLocation(null); }}
                 />

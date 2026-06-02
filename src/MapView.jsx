@@ -51,10 +51,17 @@ const MapView = ({ currentLocation, members, findMyLocation, onPinLocation, isLo
         clusterGroupRef.current.clearLayers();
 
         displayedMembers.filter(m => m.lat && m.lng).forEach(m => {
-            const marker = L.marker([m.lat, m.lng]).bindPopup(`<b>🏠 บ้านเลขที่ ${m.houseNo}</b><br>หมวด: ${m.category || 'ไม่ระบุ'}<br></b>🪙 เครดิต: ${m.credit || 0}`);
+            // แปลงตัวเลขให้มีลูกน้ำและทศนิยม 2 ตำแหน่ง
+            const formattedBalance = Number(m.balance || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+            const marker = L.marker([m.lat, m.lng]).bindPopup(
+                `<b>🏠 บ้านเลขที่ ${m.houseNo}</b><br>
+                 หมวด: ${m.category || 'ไม่ระบุ'}<br>
+                 <b>💰 ยอดเงินคงเหลือ: ฿${formattedBalance}</b>`
+            );
             clusterGroupRef.current.addLayer(marker);
-        });
-    }, [displayedMembers, isMapReady]); // 👈 ผูกกับ isMapReady ด้วย
+        })
+    }, [displayedMembers, isMapReady]);
 
     // 3. ปักหมุดตัวเรา (รอให้ isMapReady เป็น true)
     useEffect(() => {
@@ -75,9 +82,6 @@ const MapView = ({ currentLocation, members, findMyLocation, onPinLocation, isLo
             // อัปเดตตำแหน่งหมุดตัวเราทุกครั้งที่ currentLocation เปลี่ยน
             myMarkerRef.current.setLatLng(latLng);
         }
-
-        // ตรงนี้คือตัวที่ทำให้แมพ "ล็อค" ตามตัวเราตลอด
-        // ถ้าไม่อยากให้มันเลื่อนเองจนรำคาญ ให้เอาบรรทัดนี้ออก แล้วไปไว้ในปุ่มกดแทน
         mapRef.current.setView(latLng, 16);
     }, [currentLocation, isMapReady]);
 
