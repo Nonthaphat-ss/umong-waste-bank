@@ -263,45 +263,40 @@ const DashboardView = ({ stats, villageData, wasteTypeData, members, setCurrentP
                             </h3>
                         </div>
 
-                        {/* List Box แนวตั้ง */}
+                        {/* List Box แนวตั้ง - ปรับปรุงใหม่ให้แสดงผลเต็มบรรทัดบนมือถือ */}
                         <div className="flex flex-col gap-3 overflow-y-auto max-h-[460px] pr-2 scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent">
                             {[...villageData]
                                 .map(v => {
-                                    //  1. คำนวณยอดเงินสดๆ จากสมาชิกในระบบ เพื่อให้เรียงลำดับไม่เพี้ยน
                                     const vMembers = members ? members.filter(m => Number(m.villageId) === Number(v.id)) : [];
                                     const realBalance = vMembers.reduce((sum, m) => sum + (Number(m.balance) || 0), 0);
-
                                     return { ...v, realBalance };
                                 })
-                                .sort((a, b) => b.realBalance - a.realBalance) //  2. เรียงตามยอดเงินสูงสุด
+                                .sort((a, b) => b.realBalance - a.realBalance)
                                 .map((v, i) => (
-                                    <div key={v.id} className="bg-slate-50 border border-slate-100 p-4 rounded-2xl flex items-center justify-between hover:bg-emerald-50 hover:border-emerald-100 transition-colors group shadow-sm">
-                                        <div className="flex items-center gap-3 sm:gap-4">
-                                            {/* เหรียญรางวัล (ขยายขนาดให้ใหญ่ขึ้น) */}
-                                            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-black text-sm shrink-0
-                                                ${i === 0 ? 'bg-amber-100 text-amber-600 shadow-sm' :
+                                    <div key={v.id} className="bg-slate-50 border border-slate-100 p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between hover:bg-emerald-50 hover:border-emerald-100 transition-all group shadow-sm gap-2">
+
+                                        {/* ฝั่งซ้าย: เลขอันดับ + ชื่อหมวด */}
+                                        <div className="flex items-center gap-3 min-w-0">
+                                            <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-black text-xs shrink-0
+                        ${i === 0 ? 'bg-amber-100 text-amber-600' :
                                                     i === 1 ? 'bg-slate-200 text-slate-500' :
-                                                        i === 2 ? 'bg-orange-100 text-orange-600' :
-                                                            'bg-white border text-slate-400'}`}>
+                                                        i === 2 ? 'bg-orange-100 text-orange-600' : 'bg-white border text-slate-400'}`}>
                                                 {i + 1}
                                             </div>
 
-                                            {/* ชื่อหมู่บ้าน (ขยายฟอนต์เป็น text-base) */}
-                                            <div className="flex flex-col">
-                                                <span className="font-bold text-base text-slate-700 group-hover:text-emerald-700 transition-colors">
-                                                    {v.name}
-                                                </span>
-                                            </div>
+                                            {/* ชื่อหมวด: ไม่ต้อง truncate แล้ว ปล่อยให้มันเต็มพื้นที่ */}
+                                            <span className="font-bold text-base text-slate-800 group-hover:text-emerald-700 transition-colors">
+                                                {v.name}
+                                            </span>
                                         </div>
 
-                                        {/*  ยอดเงินออมรวม (ชิดขวา และขยายฟอนต์เป็น text-xl) */}
-                                        <div className="text-right flex flex-col items-end">
+                                        {/* ฝั่งขวา: ยอดเงิน (ปรับให้จัดชิดซ้ายบนมือถือ ชิดขวาบนจอคอม) */}
+                                        <div className="text-left sm:text-right pl-11 sm:pl-0">
+                                            <span className="text-[10px] sm:hidden font-bold text-slate-400 uppercase block">ยอดเงินสะสม</span>
                                             <span className="font-black text-emerald-600 font-mono text-lg sm:text-xl">
                                                 ฿{v.realBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                             </span>
-                                            <span className="text-[10px] sm:text-xs font-bold text-emerald-500/70 uppercase">
-                                                ยอดเงิน (บาท)
-                                            </span>
+                                            <span className="hidden sm:inline-block text-xs font-bold text-emerald-500/70 uppercase ml-2">บาท</span>
                                         </div>
                                     </div>
                                 ))}
@@ -458,6 +453,10 @@ const DashboardView = ({ stats, villageData, wasteTypeData, members, setCurrentP
                                         <stop offset="0%" stopColor="#64748b" stopOpacity={0.9} />
                                         <stop offset="100%" stopColor="#cbd5e1" stopOpacity={0.8} />
                                     </linearGradient>
+                                    <linearGradient id="grad-iron" x1="0" y1="1" x2="0" y2="0">
+                                        <stop offset="0%" stopColor="#475569" stopOpacity={0.9} />
+                                        <stop offset="100%" stopColor="#94a3b8" stopOpacity={0.8} />
+                                    </linearGradient>
                                 </defs>
                                 <CartesianGrid strokeDasharray="0 0" vertical={false} stroke="#f1f5f9" opacity={0.4} />
                                 <XAxis
@@ -474,7 +473,7 @@ const DashboardView = ({ stats, villageData, wasteTypeData, members, setCurrentP
                                 <Bar dataKey="amount" maxBarSize={40} radius={[6, 6, 0, 0]} >
                                     {wasteTypeData.map((entry, index) => {
                                         const colorGradients = [
-                                            'url(#grad-plastic)', 'url(#grad-paper)', 'url(#grad-glass)', 'url(#grad-aluminum)', 'url(#grad-alloy)'
+                                            'url(#grad-plastic)', 'url(#grad-paper)', 'url(#grad-glass)', 'url(#grad-aluminum)', 'url(#grad-alloy)', 'url(#grad-iron)'
                                         ];
                                         return <Cell key={`cell-${index}`} fill={colorGradients[index % colorGradients.length]} />;
                                     })}
@@ -493,32 +492,49 @@ const DashboardView = ({ stats, villageData, wasteTypeData, members, setCurrentP
 };
 const MemoizedDashboardView = React.memo(DashboardView);
 // =========================================================================
-// หน้าจอราคารับซื้อขยะ + เครื่องคำนวณเงินจำลองสำหรับผู้ใช้ทั่วไป
-// =========================================================================
-// =========================================================================
-// 🪙 หน้าจอราคารับซื้อขยะ + เครื่องคำนวณเงินจำลองสำหรับผู้ใช้ทั่วไป (PriceView)
+// 🪙 หน้าจอราคารับซื้อขยะ + เครื่องคำนวณเงินจำลอง (PriceView) โครงสร้างใหม่
 // =========================================================================
 const PriceView = ({ isLoggedIn, isEditing, setIsEditing, setCurrentPage }) => {
-    // ฐานข้อมูลราคารับซื้อตั้งต้น (5 ประเภทหลัก)
     const [prices, setPrices] = useState(() => {
         const savedPrices = localStorage.getItem('recycle_prices_data');
         return savedPrices ? JSON.parse(savedPrices) : [
-            { id: 1, type: 'พลาสติก', price: 5.5, icon: '📦', color: 'bg-blue-50 text-blue-600', border: 'border-blue-100' },
-            { id: 2, type: 'กระดาษ', price: 4.0, icon: '📄', color: 'bg-amber-50 text-amber-600', border: 'border-amber-100' },
-            { id: 3, type: 'แก้ว', price: 1.5, icon: '🍾', color: 'bg-emerald-50 text-emerald-600', border: 'border-emerald-100' },
-            { id: 4, type: 'อลูมิเนียม', price: 35.0, icon: '🥤', color: 'bg-purple-50 text-purple-600', border: 'border-purple-100' },
-            { id: 5, type: 'โลหะผสม', price: 8.0, icon: '⚙️', color: 'bg-rose-50 text-rose-600', border: 'border-rose-100' },
+            { id: 1, type: 'พลาสติกรวม', price: 4.5, icon: '📦', color: 'bg-blue-50 text-blue-600' },
+            { id: 2, type: 'กระดาษ', price: 1.9, icon: '📄', color: 'bg-amber-50 text-amber-600' },
+            { id: 3, type: 'ขวดแก้วรวม', price: 0.5, icon: '🍾', color: 'bg-emerald-50 text-emerald-600' },
+            { id: 4, type: 'อลูมิเนียม', price: 35.0, icon: '🥤', color: 'bg-purple-50 text-purple-600' },
+            { id: 5, type: 'โลหะผสม', price: 8.0, icon: '⚙️', color: 'bg-rose-50 text-rose-600' },
+            { id: 6, type: 'เหล็กรวม', price: 5.0, icon: '🔩', color: 'bg-slate-100 text-slate-700' },
+            { id: 7, type: 'สังกะสีกระป๋อง', price: 3.0, icon: '🥫', color: 'bg-slate-100 text-slate-700' },
+            { id: 8, type: 'สังกะสีแผ่น', price: 2.7, icon: '🏚️', color: 'bg-slate-100 text-slate-700' },
+            { id: 9, type: 'PVC สีฟ้า', price: 1.8, icon: '🧪', color: 'bg-blue-50 text-blue-600' },
+            { id: 10, type: 'พลาสติกใส', price: 5.0, icon: '✨', color: 'bg-blue-50 text-blue-600' },
+            { id: 11, type: 'PVC สีเทา', price: 0.5, icon: '🧪', color: 'bg-blue-50 text-blue-600' },
+            { id: 12, type: 'พลาสติกสกรีน', price: 3.0, icon: '🎨', color: 'bg-blue-50 text-blue-600' },
+            { id: 13, type: 'มอเตอร์', price: 10.0, icon: '⚙️', color: 'bg-rose-50 text-rose-600' },
+            { id: 14, type: 'กระดาษลัง', price: 2.5, icon: '📄', color: 'bg-amber-50 text-amber-600' },
+            { id: 15, type: 'พัดลมใหญ่', price: 15.0, icon: '🌪️', color: 'bg-zinc-100 text-zinc-700' },
+            { id: 16, type: 'พัดลมเล็ก', price: 10.0, icon: '🌪️', color: 'bg-zinc-100 text-zinc-700' },
+            { id: 17, type: 'ลังเหล้า', price: 8.0, icon: '📦', color: 'bg-amber-100 text-amber-800' },
+            { id: 18, type: 'โทรทัศน์', price: 50.0, icon: '📺', color: 'bg-zinc-100 text-zinc-700' },
+            { id: 19, type: 'ลังเบียร์ช้าง', price: 8.0, icon: '📦', color: 'bg-amber-100 text-amber-800' },
+            { id: 20, type: 'เครื่องซักผ้า', price: 100.0, icon: '🧺', color: 'bg-zinc-100 text-zinc-700' },
+            { id: 21, type: 'ลังเบียร์สิงห์/ลีโอ', price: 3.5, icon: '📦', color: 'bg-amber-100 text-amber-800' },
+            { id: 22, type: 'ตู้เย็น', price: 100.0, icon: '❄️', color: 'bg-zinc-100 text-zinc-700' },
+            { id: 23, type: 'อลูมิเนียมป้อง', price: 46.0, icon: '🥤', color: 'bg-purple-50 text-purple-600' },
+            { id: 24, type: 'แบตเตอรี่ใหญ่', price: 15.0, icon: '🔋', color: 'bg-yellow-50 text-yellow-600' },
+            { id: 25, type: 'อลูมิเนียมบาง', price: 43.0, icon: '🥤', color: 'bg-purple-50 text-purple-600' },
+            { id: 26, type: 'แบตเตอรี่เล็ก', price: 5.0, icon: '🔋', color: 'bg-yellow-50 text-yellow-600' },
+            { id: 27, type: 'ทองเหลือง', price: 100.0, icon: '🌟', color: 'bg-yellow-100 text-yellow-700' },
+            { id: 28, type: 'แผ่น CD', price: 2.0, icon: '💿', color: 'bg-zinc-100 text-zinc-700' },
+            { id: 29, type: 'ทองแดง', price: 200.0, icon: '✨', color: 'bg-orange-100 text-orange-700' },
+            { id: 30, type: 'มุ้งลวด', price: 15.0, icon: '🕸️', color: 'bg-slate-100 text-slate-700' },
         ];
     });
 
-    const [lastUpdated, setLastUpdated] = useState(() => {
-        return localStorage.getItem('recycle_prices_updated_date') || 'ยังไม่มีการระบุวันที่';
-    });
-
+    const [lastUpdated, setLastUpdated] = useState(() => localStorage.getItem('recycle_prices_updated_date') || 'ยังไม่มีการระบุวันที่');
     const [tempPrices, setTempPrices] = useState({});
-    const [calcWeights, setCalcWeights] = useState({ 1: '', 2: '', 3: '', 4: '', 5: '' });
+    const [calcWeights, setCalcWeights] = useState({ 1: '', 2: '', 3: '', 4: '', 5: '', 6: '' });
 
-    // ฟังก์ชันโหมดแอดมิน
     const handleStartEdit = () => {
         const currentTemp = {};
         prices.forEach(p => { currentTemp[p.id] = p.price; });
@@ -538,10 +554,9 @@ const PriceView = ({ isLoggedIn, isEditing, setIsEditing, setCurrentPage }) => {
         setLastUpdated(dateString);
         localStorage.setItem('recycle_prices_updated_date', dateString);
         setIsEditing(false);
-        alert("💾 บันทึกการปรับเปลี่ยนราคารับซื้อประจำเดือนสำเร็จ!");
+        alert("💾 บันทึกราคารับซื้อประจำเดือนสำเร็จ!");
     };
 
-    // คำนวณยอดเงินรวม
     const totalCalcMoney = useMemo(() => {
         return prices.reduce((sum, item) => {
             const weight = Number(calcWeights[item.id]) || 0;
@@ -551,18 +566,17 @@ const PriceView = ({ isLoggedIn, isEditing, setIsEditing, setCurrentPage }) => {
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
-            {/* 🌟 ส่วนหัวเมนู (Header) */}
+            {/* 🌟 1. Header: แสดงชื่อเมนูและคำบรรยายย่อย */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
                 <div>
                     <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-                        💰 ตารางราคารับซื้อขยะรีไซเคิล
+                        💰 รับซื้อขยะรีไซเคิล
                     </h2>
                     <p className="text-slate-500 text-sm mt-1 font-medium">
-                        อัปเดตราคาล่าสุดเมื่อ: <span className="text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-md">{lastUpdated}</span>
+                        ราคารับซื้อประจำเดือน (อัปเดตราคาเมื่อ: <span className="text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-md">{lastUpdated}</span>)
                     </p>
                 </div>
 
-                {/* ปุ่มควบคุม */}
                 {isLoggedIn && (
                     <div className="flex gap-2 flex-wrap sm:flex-nowrap">
                         {setCurrentPage && (
@@ -582,97 +596,90 @@ const PriceView = ({ isLoggedIn, isEditing, setIsEditing, setCurrentPage }) => {
                 )}
             </div>
 
-            {/* 🌟 แบ่ง Layout ซ้าย(ตารางราคา) - ขวา(เครื่องคิดเลข) */}
-            <div className="flex flex-col lg:flex-row gap-6">
+            {/* 🌟 โครงสร้างหลัก (ตารางรับซื้อ + เครื่องคิดเลขในตัว) */}
+            <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
 
-                {/* 📌 ฝั่งซ้าย: ตารางราคารับซื้อ (60%) */}
-                <div className="lg:w-[60%] w-full bg-white border border-slate-100 rounded-3xl p-6 shadow-sm flex flex-col h-full">
-                    <h3 className="font-bold text-lg text-slate-800 mb-4 flex items-center gap-2">
-                        📊 เรตราคารับซื้อ (บาท/กิโลกรัม)
-                    </h3>
-                    <div className="space-y-3 flex-grow">
-                        {prices.map((item) => (
-                            <div key={item.id} className={`bg-white border-2 ${isEditing ? 'border-amber-100 bg-amber-50/20' : item.border} rounded-2xl p-4 flex items-center justify-between gap-4 transition-all hover:shadow-md`}>
-                                <div className="flex items-center gap-4">
-                                    <span className={`text-2xl w-12 h-12 flex items-center justify-center rounded-2xl ${item.color} font-bold shadow-sm`}>{item.icon}</span>
-                                    <div>
-                                        <h4 className="font-black text-slate-800 text-base">{item.type}</h4>
-                                        <p className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mt-0.5">ราคาต่อ 1 กิโลกรัม</p>
-                                    </div>
-                                </div>
+                {/* 🌟 2. Section Header: เปลี่ยนเป็นหัวข้อเดียวที่ครอบคลุม Grid ทั้งหมด */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 mb-2 bg-slate-50/50 rounded-2xl border border-slate-100">
+                    <div className="flex items-center gap-3">
+                        <div className="bg-slate-200 p-2.5 rounded-xl">
+                            <Database size={20} className="text-slate-600" />
+                        </div>
+                        <div>
+                            <h2 className="font-black text-slate-800 text-lg">รายการรับซื้อขยะ</h2>
+                            <p className="text-xs text-slate-500 font-bold">แสดงราคารับซื้อและช่องกรอกประมาณการรายได้</p>
+                        </div>
+                    </div>
 
-                                <div className="text-right">
-                                    {isEditing ? (
-                                        <div className="relative flex items-center">
-                                            <span className="absolute left-3 text-slate-400 font-bold">฿</span>
-                                            <input
-                                                type="number" step="any"
-                                                value={tempPrices[item.id] ?? ''}
-                                                onChange={(e) => {
-                                                    const val = e.target.value;
-                                                    setTempPrices(prev => ({ ...prev, [item.id]: val === '' ? '' : Number(val) }));
-                                                }}
-                                                className="w-24 border-2 border-amber-300 rounded-xl pl-8 pr-3 py-2 text-right font-black text-amber-700 outline-none text-base bg-white focus:border-amber-500 shadow-inner"
-                                            />
-                                        </div>
-                                    ) : (
-                                        <div className="flex items-baseline gap-1">
-                                            <span className="text-2xl font-black text-slate-800 font-mono tracking-tight">{item.price.toFixed(2)}</span>
-                                            <span className="text-xs font-bold text-slate-400">บาท</span>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        ))}
+                    {/* แสดงจำนวนรายการที่โหลดมา (ทำให้ดูเป็นระบบจัดการ) */}
+                    <div className="flex items-center gap-2 bg-white border border-slate-200 px-4 py-2 rounded-xl shadow-sm">
+                        <span className="text-xs font-bold text-slate-400 uppercase">รวมทั้งหมด</span>
+                        <span className="font-black text-emerald-600 text-lg">{prices.length}</span>
+                        <span className="text-xs font-bold text-slate-400 uppercase">รายการ</span>
                     </div>
                 </div>
 
-                {/* 📌 ฝั่งขวา: เครื่องคิดเลขจำลอง (40%) */}
-                {!isEditing && (
-                    <div className="lg:w-[40%] w-full bg-slate-800 rounded-3xl p-6 shadow-xl flex flex-col h-full relative overflow-hidden">
-                        {/* ลายกราฟิก Background แบบเครื่องคิดเลข */}
-                        <div className="absolute -right-10 -top-10 opacity-5 pointer-events-none">
-                            <Database size={200} className="text-white" />
-                        </div>
+                {/* 🌟 3. Item Rows: Grid 4 คอลัมน์ แบบฟอนต์อ่านง่าย */}
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-3">
+                    {prices.map((item) => (
+                        <div
+                            key={item.id}
+                            className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 flex flex-col justify-between hover:border-emerald-400 transition-all group"
+                        >
+                            {/* ส่วนหัว: ไอคอน + ชื่อ (เพิ่มฟอนต์เป็น text-sm) */}
+                            <div className="flex items-center gap-3 mb-4">
+                                <span className={`text-xl w-10 h-10 flex items-center justify-center rounded-lg ${item.color} font-bold shrink-0`}>
+                                    {item.icon}
+                                </span>
+                                <h4 className="font-bold text-slate-800 text-sm truncate">{item.type}</h4>
+                            </div>
 
-                        <div className="relative z-10 mb-6 border-b border-slate-700 pb-4">
-                            <h3 className="font-black text-xl text-white flex items-center gap-2">🧮 ประเมินรายได้ของคุณ</h3>
-                            <p className="text-slate-400 text-xs mt-1">ลองใส่น้ำหนักขยะที่บ้านคุณมี เพื่อคำนวณยอดเงิน</p>
-                        </div>
+                            {/* ส่วนราคาและช่องกรอก (เพิ่มฟอนต์ให้ชัดเจน) */}
+                            <div className="space-y-2">
+                                {/* ราคาต่อหน่วย */}
+                                <div className="flex justify-between items-center px-1">
+                                    <span className="text-[11px] text-slate-400 font-bold uppercase">ราคา:</span>
+                                    <span className="text-xs font-black text-slate-700">{item.price.toFixed(2)} ฿</span>
+                                </div>
 
-                        {/* ช่องกรอกน้ำหนัก */}
-                        <div className="relative z-10 space-y-3 flex-grow max-h-[350px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-slate-600">
-                            {prices.map((item) => (
-                                <div key={item.id} className="bg-slate-700/50 p-3.5 rounded-2xl border border-slate-600 flex items-center justify-between gap-3">
-                                    <span className="text-sm font-bold text-slate-200 flex items-center gap-2 w-1/3">
-                                        {item.icon} {item.type}
-                                    </span>
-
-                                    <div className="flex-1 relative">
+                                {/* ช่องกรอกน้ำหนัก */}
+                                {isEditing ? (
+                                    <input
+                                        type="number"
+                                        value={tempPrices[item.id] ?? ''}
+                                        onChange={(e) => setTempPrices(prev => ({ ...prev, [item.id]: e.target.value }))}
+                                        className="w-full text-center py-2 rounded-lg bg-amber-50 text-amber-700 font-bold border border-amber-200 text-sm outline-none"
+                                    />
+                                ) : (
+                                    <div className="relative">
                                         <input
                                             type="number" min="0" step="any" placeholder="0"
-                                            value={calcWeights[item.id]}
-                                            onChange={(e) => {
-                                                const val = e.target.value;
-                                                setCalcWeights(prev => ({ ...prev, [item.id]: val }));
-                                            }}
-                                            className="w-full bg-slate-900 border border-slate-600 rounded-xl pl-3 pr-8 py-2 text-sm font-black text-white outline-none focus:border-emerald-500 transition-all text-right placeholder-slate-600"
+                                            value={calcWeights[item.id] || ''}
+                                            onChange={(e) => setCalcWeights(prev => ({ ...prev, [item.id]: e.target.value }))}
+                                            className="w-full text-right py-2.5 pr-8 rounded-lg bg-slate-50 border border-slate-200 font-bold text-slate-800 text-sm outline-none focus:ring-1 focus:ring-emerald-500 shadow-inner"
                                         />
-                                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 font-bold">กก.</span>
+                                        <span className="absolute right-2 top-2.5 text-[10px] text-slate-400 font-bold">กก.</span>
                                     </div>
-                                </div>
-                            ))}
-                        </div>
-
-                        {/* กล่องสรุปยอดเงินด้านล่างสุด */}
-                        <div className="relative z-10 mt-6 bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-2xl p-5 shadow-lg border border-emerald-400/50 flex flex-col items-center text-center">
-                            <span className="text-emerald-100 text-xs font-bold uppercase tracking-widest mb-1">ยอดเงินโดยประมาณที่จะได้รับ</span>
-                            <div className="flex items-baseline gap-2">
-                                <span className="text-white text-xl font-bold">฿</span>
-                                <span className="text-4xl font-black text-white font-mono tracking-tight drop-shadow-md">
-                                    {totalCalcMoney.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                </span>
+                                )}
                             </div>
+                        </div>
+                    ))}
+                </div>
+
+                {/* 🌟 4. ส่วนยอดเงินรวม (ต่อท้ายจาก Grid เป็นแถวสุดท้าย) */}
+                {!isEditing && (
+                    <div className="bg-emerald-600 border-t-4 border-emerald-700 p-5 sm:p-6 flex flex-col sm:flex-row justify-between items-center gap-4 text-white">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-emerald-500 rounded-xl shadow-inner">
+                                <Wallet size={28} className="text-white" />
+                            </div>
+                            <h3 className="font-bold text-xl sm:text-2xl drop-shadow-sm">ยอดเงินโดยประมาณที่จะได้รับ</h3>
+                        </div>
+                        <div className="bg-white/10 border border-white/20 px-6 py-3 rounded-2xl flex items-baseline gap-2 w-full sm:w-auto justify-center shadow-inner">
+                            <span className="text-emerald-100 font-bold text-2xl">฿</span>
+                            <span className="text-4xl sm:text-5xl font-black font-mono tracking-tight drop-shadow-md">
+                                {totalCalcMoney.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </span>
                         </div>
                     </div>
                 )}
@@ -694,8 +701,8 @@ const EditMemberModal = ({ member, villageData, onSave, onDelete, onClose }) => 
                     name: person,
                     balance: 0,
                     credit: 0,
-                    wasteData: { 'พลาสติก': 0, 'กระดาษ': 0, 'แก้ว': 0, 'อลูมิเนียม': 0, 'โลหะผสม': 0 },
-                    hasWelfare: false,
+                    wasteData: { 'พลาสติก': 0, 'กระดาษ': 0, 'แก้ว': 0, 'อลูมิเนียม': 0, 'โลหะผสม': 0, 'เหล็ก': 0 }
+                    , hasWelfare: false,
                     isSorted: false
                 };
             }
@@ -706,7 +713,7 @@ const EditMemberModal = ({ member, villageData, onSave, onDelete, onClose }) => 
         return {
             ...member,
             familyMembers: migratedFamily.length > 0 ? migratedFamily : [{
-                id: Date.now().toString(), name: '', balance: 0, credit: 0, wasteData: { 'พลาสติก': 0, 'กระดาษ': 0, 'แก้ว': 0, 'อลูมิเนียม': 0, 'โลหะผสม': 0 }, hasWelfare: false, isSorted: false
+                id: Date.now().toString(), name: '', balance: 0, credit: 0, wasteData: { 'พลาสติก': 0, 'กระดาษ': 0, 'แก้ว': 0, 'อลูมิเนียม': 0, 'โลหะผสม': 0, 'เหล็ก': 0 }, hasWelfare: false, isSorted: false
             }],
             balance: member.balance || 0,
             credit: member.credit || 0
@@ -714,7 +721,7 @@ const EditMemberModal = ({ member, villageData, onSave, onDelete, onClose }) => 
     });
 
     const CARBON_MULTIPLIERS = {
-        'พลาสติก': 1.0310, 'กระดาษ': 5.6735, 'แก้ว': 0.2760, 'อลูมิเนียม': 9.1270, 'โลหะผสม': 4.3910
+        'พลาสติก': 1.0310, 'กระดาษ': 5.6735, 'แก้ว': 0.2760, 'อลูมิเนียม': 9.1270, 'โลหะผสม': 4.3910, 'เหล็ก': 1.8320
     };
 
     // 📍 ระบบแผนที่
@@ -758,7 +765,7 @@ const EditMemberModal = ({ member, villageData, onSave, onDelete, onClose }) => 
             familyMembers: [...prev.familyMembers, {
                 id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
                 name: '', balance: 0, credit: 0,
-                wasteData: { 'พลาสติก': 0, 'กระดาษ': 0, 'แก้ว': 0, 'อลูมิเนียม': 0, 'โลหะผสม': 0 },
+                wasteData: { 'พลาสติก': 0, 'กระดาษ': 0, 'แก้ว': 0, 'อลูมิเนียม': 0, 'โลหะผสม': 0, 'เหล็ก': 0 },
                 hasWelfare: false, isSorted: false
             }]
         }));
@@ -773,7 +780,7 @@ const EditMemberModal = ({ member, villageData, onSave, onDelete, onClose }) => 
 
             return {
                 ...prev,
-                familyMembers: nextList.length === 0 ? [{ id: Date.now().toString(), name: '', balance: 0, credit: 0, wasteData: { 'พลาสติก': 0, 'กระดาษ': 0, 'แก้ว': 0, 'อลูมิเนียม': 0, 'โลหะผสม': 0 }, hasWelfare: false, isSorted: false }] : nextList,
+                familyMembers: nextList.length === 0 ? [{ id: Date.now().toString(), name: '', balance: 0, credit: 0, wasteData: { 'พลาสติก': 0, 'กระดาษ': 0, 'แก้ว': 0, 'อลูมิเนียม': 0, 'โลหะผสม': 0, 'เหล็ก': 0 }, hasWelfare: false, isSorted: false }] : nextList,
                 balance: totalHouseBalance,
                 credit: totalHouseCredit
             };
@@ -946,7 +953,7 @@ const EditMemberModal = ({ member, villageData, onSave, onDelete, onClose }) => 
                                         </button>
                                         {expandedWasteIndex === index && (
                                             <div className="p-3 bg-white grid grid-cols-2 gap-2 border-t border-slate-200">
-                                                {['พลาสติก', 'กระดาษ', 'แก้ว', 'อลูมิเนียม', 'โลหะผสม'].map((type) => (
+                                                {['พลาสติก', 'กระดาษ', 'แก้ว', 'อลูมิเนียม', 'โลหะผสม', 'เหล็ก'].map((type) => (
                                                     <div key={type} className="flex flex-col gap-0.5">
                                                         <label className="text-[10px] font-bold text-slate-500">{type}</label>
                                                         <input
@@ -1083,14 +1090,14 @@ const MembersView = ({ members, setMembers, villages, setVillages, isLoggedIn, l
         }
 
         const CARBON_MULTIPLIERS = {
-            'พลาสติก': 1.0310, 'กระดาษ': 5.6735, 'แก้ว': 0.2760, 'อลูมิเนียม': 9.1270, 'โลหะผสม': 4.3910
+            'พลาสติก': 1.0310, 'กระดาษ': 5.6735, 'แก้ว': 0.2760, 'อลูมิเนียม': 9.1270, 'โลหะผสม': 4.3910, 'เหล็ก': 1.8320
         };
 
         //  1. ดักจับข้อมูล: ถ้าครอบครัวถูกลบจนเกลี้ยง ให้สร้างกล่องข้อมูลเปล่าไว้กันระบบพัง
         if (!updatedMember.familyMembers || updatedMember.familyMembers.length === 0) {
             updatedMember.familyMembers = [{
                 id: Date.now().toString(), name: '', balance: 0, credit: 0,
-                wasteData: { 'พลาสติก': 0, 'กระดาษ': 0, 'แก้ว': 0, 'อลูมิเนียม': 0, 'โลหะผสม': 0 },
+                wasteData: { 'พลาสติก': 0, 'กระดาษ': 0, 'แก้ว': 0, 'อลูมิเนียม': 0, 'โลหะผสม': 0, 'เหล็ก': 0 },
                 hasWelfare: false, isSorted: false
             }];
         }
@@ -1101,7 +1108,7 @@ const MembersView = ({ members, setMembers, villages, setVillages, isLoggedIn, l
         updatedMember.isSorted = updatedMember.familyMembers.some(p => p.isSorted);
 
         //  3. รวบรวมน้ำหนักขยะทั้งหมดของคนในบ้าน มาเป็นขยะรวมของบ้าน
-        const aggregatedWaste = { 'พลาสติก': 0, 'กระดาษ': 0, 'แก้ว': 0, 'อลูมิเนียม': 0, 'โลหะผสม': 0 };
+        const aggregatedWaste = { 'พลาสติก': 0, 'กระดาษ': 0, 'แก้ว': 0, 'อลูมิเนียม': 0, 'โลหะผสม': 0, 'เหล็ก': 0 };
         updatedMember.familyMembers.forEach(person => {
             Object.entries(person.wasteData || {}).forEach(([type, weight]) => {
                 aggregatedWaste[type] += Number(weight) || 0;
@@ -1999,7 +2006,7 @@ const HistoryView = ({ transactions, villages, db, refreshData, setCurrentPage }
     React.useEffect(() => { setTablePage(1); }, [selectedCategory, searchTerm]);
 
     const handleExportExcel = () => {
-        const headers = ['ลำดับ', 'วันที่', 'เวลา', 'ผู้ดำเนินการ', 'หมวดหมู่', 'บ้านเลขที่', 'สมาชิกผู้ฝาก', 'ยอดเงินฝากเพิ่ม (บาท)', 'คาร์บอนที่ได้ (kgCO2e)', 'พลาสติก (กก.)', 'กระดาษ (กก.)', 'แก้ว (กก.)', 'อลูมิเนียม (กก.)', 'โลหะผสม (กก.)'];
+        const headers = ['ลำดับ', 'วันที่', 'เวลา', 'ผู้ดำเนินการ', 'หมวดหมู่', 'บ้านเลขที่', 'สมาชิกผู้ฝาก', 'ยอดเงินฝากเพิ่ม (บาท)', 'คาร์บอนที่ได้ (kgCO2e)', 'พลาสติก (กก.)', 'กระดาษ (กก.)', 'แก้ว (กก.)', 'อลูมิเนียม (กก.)', 'โลหะผสม (กก.)', 'เหล็ก (กก.)'];
         const dataRows = filteredTx.map((tx, i) => [
             i + 1, tx.date, tx.time, tx.operator || 'ไม่ระบุ', tx.category || 'ไม่ระบุ', tx.houseNo, tx.personName || 'ไม่ระบุชื่อ',
             (Number(tx.addedBalance) || 0).toFixed(2),
@@ -2009,6 +2016,7 @@ const HistoryView = ({ transactions, villages, db, refreshData, setCurrentPage }
             (Number(tx.wasteData?.['แก้ว']) || 0).toFixed(2),
             (Number(tx.wasteData?.['อลูมิเนียม']) || 0).toFixed(2),
             (Number(tx.wasteData?.['โลหะผสม']) || 0).toFixed(2)
+                (Number(tx.wasteData?.['เหล็ก']) || 0).toFixed(2)
         ]);
 
         const rows = [headers, ...dataRows];
@@ -2092,7 +2100,7 @@ const HistoryView = ({ transactions, villages, db, refreshData, setCurrentPage }
                                     </div>
 
                                     <div className="flex flex-wrap gap-1.5 mt-1">
-                                        {['พลาสติก', 'กระดาษ', 'แก้ว', 'อลูมิเนียม', 'โลหะผสม'].map(type => Number(tx.wasteData?.[type]) > 0 && (
+                                        {['พลาสติก', 'กระดาษ', 'แก้ว', 'อลูมิเนียม', 'โลหะผสม', 'เหล็ก'].map(type => Number(tx.wasteData?.[type]) > 0 && (
                                             <span key={type} className="bg-white border border-slate-200 px-2 py-1 rounded-lg text-[11px] font-bold text-slate-600 flex items-center gap-1 shadow-sm">
                                                 <span className="w-1.5 h-1.5 bg-blue-400 rounded-full"></span>
                                                 {type}: <span className="text-blue-600">{Number(tx.wasteData[type]).toFixed(2)} กก.</span>
@@ -2173,15 +2181,15 @@ const AdminLogsView = ({ adminLogs, db, refreshData, setCurrentPage }) => {
     };
 
     const handleClearLogs = async () => {
-        if (!confirm(`⚠️ ยืนยันการ "ล้างประวัติแอดมิน" ของ ${selectedOperator === 'all' ? 'ทุกคน' : selectedOperator} ออกจากฐานข้อมูล?\n(แนะนำให้ Export ไว้ก่อน)`)) return;
+        if (!confirm(`ยืนยันการลบประวัติที่เลือก?`)) return;
         try {
             for (const log of filteredLogs) {
                 await deleteDoc(doc(db, "admin_logs", String(log.id)));
             }
-            alert("🗑️ ล้างประวัติแอดมินบนระบบ Cloud สำเร็จ");
+            alert("🗑️ ลบสำเร็จ!");
             if (typeof refreshData === 'function') refreshData();
         } catch (error) {
-            alert("❌ ลบประวัติผิดพลาด");
+            alert("❌ ลบผิดพลาด");
         }
     };
 
@@ -2490,7 +2498,7 @@ const VillageDetailsModal = ({ village, onClose, villages, members }) => {
             acc[type] = (acc[type] || 0) + Number(data[type] || 0);
         });
         return acc;
-    }, { 'พลาสติก': 0, 'กระดาษ': 0, 'แก้ว': 0, 'อลูมิเนียม': 0, 'โลหะผสม': 0 });
+    }, { 'พลาสติก': 0, 'กระดาษ': 0, 'แก้ว': 0, 'อลูมิเนียม': 0, 'โลหะผสม': 0, 'เหล็ก': 0 });
 
     //  4. คำนวณยอดเงินรวม (balance) และคาร์บอน ของหมวด
     const totalVillageBalance = allPersonsInVillage.reduce((sum, p) => sum + p.balance, 0);
@@ -2529,7 +2537,7 @@ const VillageDetailsModal = ({ village, onClose, villages, members }) => {
                         <Database size={18} className="text-emerald-500" /> ปริมาณขยะแยกประเภทของหมวด (กก.)
                     </h4>
                     <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-                        {['พลาสติก', 'กระดาษ', 'แก้ว', 'อลูมิเนียม', 'โลหะผสม'].map(type => (
+                        {['พลาสติก', 'กระดาษ', 'แก้ว', 'อลูมิเนียม', 'โลหะผสม', 'เหล็ก'].map(type => (
                             <div key={type} className="bg-slate-50 p-4 rounded-2xl border border-slate-100 shadow-sm text-center hover:border-emerald-200 hover:shadow-md transition-all">
                                 <p className="text-[10px] text-slate-500 font-black mb-1.5">{type}</p>
                                 <div className="flex flex-col items-center">
@@ -2632,7 +2640,8 @@ const VillagesView = ({ villageData, members, setSelectedVillage, setCurrentPage
             'กระดาษ': 5.6735,
             'แก้ว': 0.2760,
             'อลูมิเนียม': 9.1270,
-            'โลหะผสม': 4.3910
+            'โลหะผสม': 4.3910,
+            'เหล็ก': 1.8320
         };
         return Object.entries(wasteData || {}).reduce((total, [type, weight]) => {
             return total + (Number(weight) * (FACTORS[type] || 0));
@@ -2648,7 +2657,7 @@ const VillagesView = ({ villageData, members, setSelectedVillage, setCurrentPage
                 let totalPersons = 0;
                 let realTotalWaste = 0;
                 let realTotalBalance = 0;
-                const realWasteData = { 'พลาสติก': 0, 'กระดาษ': 0, 'แก้ว': 0, 'อลูมิเนียม': 0, 'โลหะผสม': 0 };
+                const realWasteData = { 'พลาสติก': 0, 'กระดาษ': 0, 'แก้ว': 0, 'อลูมิเนียม': 0, 'โลหะผสม': 0, 'เหล็ก': 0 };
 
                 vMembers.forEach(m => {
                     // นับจำนวนสมาชิกรายบุคคล
@@ -2795,7 +2804,8 @@ const EditVillageModal = ({ village, onClose, onSave, members, onDeleteMember })
         'กระดาษ': village.wasteData?.['กระดาษ'] || 0,
         'แก้ว': village.wasteData?.['แก้ว'] || 0,
         'อลูมิเนียม': village.wasteData?.['อลูมิเนียม'] || 0,
-        'โลหะผสม': village.wasteData?.['โลหะผสม'] || 0
+        'โลหะผสม': village.wasteData?.['โลหะผสม'] || 0,
+        'เหล็ก': village.wasteData?.['เหล็ก'] || 0
     });
 
     // 🔄 [แก้ไขจุดคัดกรอง]: ล็อกให้ดึงเฉพาะสมาชิกที่อยู่ในหมวดนี้เท่านั้นมาแสดง (เทียบละเอียดทุกรูปแบบ ป้องกันข้อมูลปนกันมั่ว)
@@ -2830,7 +2840,7 @@ const EditVillageModal = ({ village, onClose, onSave, members, onDeleteMember })
                             <Database size={18} className="text-emerald-500" /> ข้อมูลขยะแยกประเภท
                         </h4>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            {['พลาสติก', 'กระดาษ', 'แก้ว', 'อลูมิเนียม', 'โลหะผสม'].map((type) => (
+                            {['พลาสติก', 'กระดาษ', 'แก้ว', 'อลูมิเนียม', 'โลหะผสม', 'เหล็ก'].map((type) => (
                                 <div key={type} className="space-y-2">
                                     <label className="text-sm font-bold text-slate-600 flex items-center gap-2">
                                         📦 {type}
@@ -2911,7 +2921,8 @@ const EditVillageModal = ({ village, onClose, onSave, members, onDeleteMember })
                                 'กระดาษ': Number(wasteWeights?.['กระดาษ'] || 0),
                                 'แก้ว': Number(wasteWeights?.['แก้ว'] || 0),
                                 'อลูมิเนียม': Number(wasteWeights?.['อลูมิเนียม'] || 0),
-                                'โลหะผสม': Number(wasteWeights?.['โลหะผสม'] || 0)
+                                'โลหะผสม': Number(wasteWeights?.['โลหะผสม'] || 0),
+                                'เหล็ก': Number(wasteWeights?.['เหล็ก'] || 0)
                             };
 
                             //  แก้ไขจุดอันตราย! เปลี่ยนตัวคูณจาก 10 ให้กลายเป็นสูตรคาร์บอนใหม่
@@ -2920,7 +2931,8 @@ const EditVillageModal = ({ village, onClose, onSave, members, onDeleteMember })
                                 'กระดาษ': 5.6735,
                                 'แก้ว': 0.2760,
                                 'อลูมิเนียม': 9.1270,
-                                'โลหะผสม': 4.3910
+                                'โลหะผสม': 4.3910,
+                                'เหล็ก': 1.8320
                             };
 
                             const totalCarbonCredit = Object.entries(finalWasteData).reduce((sum, [type, weight]) => {
@@ -2946,7 +2958,7 @@ const EditVillageModal = ({ village, onClose, onSave, members, onDeleteMember })
         </div>
     );
 };
-// === หน้าต่างลงทะเบียนสมาชิกใหม่ (AddMemberModal) โฉมใหม่ (ระบบรายบุคคล 100%) ===
+
 const AddMemberModal = ({ initialLat, initialLng, villageData, onSave, onClose }) => {
     // 1.  ปรับโครงสร้าง State ให้รองรับการเก็บข้อมูลรายบุคคล 100%
     const [newMember, setNewMember] = useState({
@@ -2960,7 +2972,7 @@ const AddMemberModal = ({ initialLat, initialLng, villageData, onSave, onClose }
             name: '',
             balance: 0,
             credit: 0,
-            wasteData: { 'พลาสติก': 0, 'กระดาษ': 0, 'แก้ว': 0, 'อลูมิเนียม': 0, 'โลหะผสม': 0 },
+            wasteData: { 'พลาสติก': 0, 'กระดาษ': 0, 'แก้ว': 0, 'อลูมิเนียม': 0, 'โลหะผสม': 0, 'เหล็ก': 0 },
             hasWelfare: false,
             isSorted: false
         }],
@@ -2971,7 +2983,7 @@ const AddMemberModal = ({ initialLat, initialLng, villageData, onSave, onClose }
     const [expandedWasteIndex, setExpandedWasteIndex] = useState(null);
 
     const CARBON_MULTIPLIERS = {
-        'พลาสติก': 1.0310, 'กระดาษ': 5.6735, 'แก้ว': 0.2760, 'อลูมิเนียม': 9.1270, 'โลหะผสม': 4.3910
+        'พลาสติก': 1.0310, 'กระดาษ': 5.6735, 'แก้ว': 0.2760, 'อลูมิเนียม': 9.1270, 'โลหะผสม': 4.3910, 'เหล็ก': 1.8320
     };
 
     // ฟังก์ชันเพิ่มกล่องข้อมูลสมาชิกคนใหม่ในบ้าน
@@ -2983,7 +2995,7 @@ const AddMemberModal = ({ initialLat, initialLng, villageData, onSave, onClose }
                 {
                     id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
                     name: '', balance: 0, credit: 0,
-                    wasteData: { 'พลาสติก': 0, 'กระดาษ': 0, 'แก้ว': 0, 'อลูมิเนียม': 0, 'โลหะผสม': 0 },
+                    wasteData: { 'พลาสติก': 0, 'กระดาษ': 0, 'แก้ว': 0, 'อลูมิเนียม': 0, 'โลหะผสม': 0, 'เหล็ก': 0 },
                     hasWelfare: false, isSorted: false
                 }
             ]
@@ -3021,7 +3033,7 @@ const AddMemberModal = ({ initialLat, initialLng, villageData, onSave, onClose }
         setNewMember({
             ...newMember,
             familyMembers: updatedFamily.length > 0 ? updatedFamily : [{
-                id: Date.now().toString(), name: '', balance: 0, credit: 0, wasteData: { 'พลาสติก': 0, 'กระดาษ': 0, 'แก้ว': 0, 'อลูมิเนียม': 0, 'โลหะผสม': 0 }, hasWelfare: false, isSorted: false
+                id: Date.now().toString(), name: '', balance: 0, credit: 0, wasteData: { 'พลาสติก': 0, 'กระดาษ': 0, 'แก้ว': 0, 'อลูมิเนียม': 0, 'โลหะผสม': 0, 'เหล็ก': 0 }, hasWelfare: false, isSorted: false
             }]
         });
     };
@@ -3161,7 +3173,7 @@ const AddMemberModal = ({ initialLat, initialLng, villageData, onSave, onClose }
                                         </button>
                                         {expandedWasteIndex === index && (
                                             <div className="p-3 bg-white grid grid-cols-2 gap-2 border-t border-slate-200">
-                                                {['พลาสติก', 'กระดาษ', 'แก้ว', 'อลูมิเนียม', 'โลหะผสม'].map((type) => (
+                                                {['พลาสติก', 'กระดาษ', 'แก้ว', 'อลูมิเนียม', 'โลหะผสม', 'เหล็ก'].map((type) => (
                                                     <div key={type} className="flex flex-col gap-0.5">
                                                         <label className="text-[10px] font-bold text-slate-500">{type}</label>
                                                         <input
@@ -3213,7 +3225,7 @@ const AddMemberModal = ({ initialLat, initialLng, villageData, onSave, onClose }
                         if (!newMember.houseNo || !newMember.familyMembers[0].name.trim()) return alert("❌ กรุณากรอกบ้านเลขที่ และชื่อสมาชิกอย่างน้อย 1 คน");
 
                         // 2. คำนวณสรุปรวมระดับบ้าน (Aggregations)
-                        const aggregatedWaste = { 'พลาสติก': 0, 'กระดาษ': 0, 'แก้ว': 0, 'อลูมิเนียม': 0, 'โลหะผสม': 0 };
+                        const aggregatedWaste = { 'พลาสติก': 0, 'กระดาษ': 0, 'แก้ว': 0, 'อลูมิเนียม': 0, 'โลหะผสม': 0, 'เหล็ก': 0 };
                         let finalHouseIsSorted = false;
 
                         newMember.familyMembers.forEach(p => {
@@ -3253,11 +3265,11 @@ const RecordWasteView = ({ members, villages, setMembers, setVillages, db, logAd
 
     // สเตตัสสำหรับเปิดฟอร์มกรอกขยะรายบุคคล
     const [activePersonKey, setActivePersonKey] = useState(null); // รูปแบบ: 'memberId|personId'
-    const [wasteInputs, setWasteInputs] = useState({ 'พลาสติก': '', 'กระดาษ': '', 'แก้ว': '', 'อลูมิเนียม': '', 'โลหะผสม': '' });
+    const [wasteInputs, setWasteInputs] = useState({ 'พลาสติก': '', 'กระดาษ': '', 'แก้ว': '', 'อลูมิเนียม': '', 'โลหะผสม': '', 'เหล็ก': '' });
     const [addedBalance, setAddedBalance] = useState('');
 
     const CARBON_MULTIPLIERS = {
-        'พลาสติก': 1.0310, 'กระดาษ': 5.6735, 'แก้ว': 0.2760, 'อลูมิเนียม': 9.1270, 'โลหะผสม': 4.3910
+        'พลาสติก': 1.0310, 'กระดาษ': 5.6735, 'แก้ว': 0.2760, 'อลูมิเนียม': 9.1270, 'โลหะผสม': 4.3910, 'เหล็ก': 1.8320
     };
 
     const currentTurnCarbon = useMemo(() => {
@@ -3302,7 +3314,7 @@ const RecordWasteView = ({ members, villages, setMembers, setVillages, db, logAd
                 const pId = p.id || String(idx);
                 if (String(pId) === String(personId)) {
                     const pObj = typeof p === 'string'
-                        ? { id: pId, name: p, balance: 0, credit: 0, wasteData: { 'พลาสติก': 0, 'กระดาษ': 0, 'แก้ว': 0, 'อลูมิเนียม': 0, 'โลหะผสม': 0 }, hasWelfare: false, isSorted: false }
+                        ? { id: pId, name: p, balance: 0, credit: 0, wasteData: { 'พลาสติก': 0, 'กระดาษ': 0, 'แก้ว': 0, 'อลูมิเนียม': 0, 'โลหะผสม': 0, 'เหล็ก': 0 }, hasWelfare: false, isSorted: false }
                         : { ...p };
 
                     pObj.balance = (Number(pObj.balance) || 0) + finalBalanceToAdd;
@@ -3322,7 +3334,7 @@ const RecordWasteView = ({ members, villages, setMembers, setVillages, db, logAd
             // 2. คำนวณยอดรวมใหม่ของบ้าน
             const newHouseBalance = updatedFamily.reduce((sum, p) => sum + (Number(p.balance) || 0), 0);
             const newHouseCredit = updatedFamily.reduce((sum, p) => sum + (Number(p.credit) || 0), 0);
-            const aggregatedWaste = { 'พลาสติก': 0, 'กระดาษ': 0, 'แก้ว': 0, 'อลูมิเนียม': 0, 'โลหะผสม': 0 };
+            const aggregatedWaste = { 'พลาสติก': 0, 'กระดาษ': 0, 'แก้ว': 0, 'อลูมิเนียม': 0, 'โลหะผสม': 0, 'เหล็ก': 0 };
             updatedFamily.forEach(person => {
                 Object.entries(person.wasteData || {}).forEach(([type, weight]) => {
                     aggregatedWaste[type] += Number(weight) || 0;
@@ -3354,7 +3366,8 @@ const RecordWasteView = ({ members, villages, setMembers, setVillages, db, logAd
                     'กระดาษ': Number(wasteInputs['กระดาษ']) || 0,
                     'แก้ว': Number(wasteInputs['แก้ว']) || 0,
                     'อลูมิเนียม': Number(wasteInputs['อลูมิเนียม']) || 0,
-                    'โลหะผสม': Number(wasteInputs['โลหะผสม']) || 0
+                    'โลหะผสม': Number(wasteInputs['โลหะผสม']) || 0,
+                    'เหล็ก': Number(wasteInputs['เหล็ก']) || 0
                 },
                 creditAdded: finalCreditToAdd,
                 addedBalance: finalBalanceToAdd,
@@ -3373,7 +3386,7 @@ const RecordWasteView = ({ members, villages, setMembers, setVillages, db, logAd
 
             // 6. รีเฟรชหน้าจอ
             setActivePersonKey(null);
-            setWasteInputs({ 'พลาสติก': '', 'กระดาษ': '', 'แก้ว': '', 'อลูมิเนียม': '', 'โลหะผสม': '' });
+            setWasteInputs({ 'พลาสติก': '', 'กระดาษ': '', 'แก้ว': '', 'อลูมิเนียม': '', 'โลหะผสม': '', 'เหล็ก': '' });
             setAddedBalance('');
             if (typeof refreshData === 'function') await refreshData();
 
@@ -3441,7 +3454,7 @@ const RecordWasteView = ({ members, villages, setMembers, setVillages, db, logAd
                                             {/* แถบรายชื่อ (กดเพื่อเปิดปิดฟอร์ม) */}
                                             <div onClick={() => {
                                                 setActivePersonKey(isEditing ? null : `${m.id}|${pId}`);
-                                                setWasteInputs({ 'พลาสติก': '', 'กระดาษ': '', 'แก้ว': '', 'อลูมิเนียม': '', 'โลหะผสม': '' });
+                                                setWasteInputs({ 'พลาสติก': '', 'กระดาษ': '', 'แก้ว': '', 'อลูมิเนียม': '', 'โลหะผสม': '', 'เหล็ก': '' });
                                                 setAddedBalance('');
                                             }} className="p-3 sm:p-4 flex items-center justify-between cursor-pointer select-none group">
                                                 <div className="flex items-center gap-3">
@@ -3458,7 +3471,7 @@ const RecordWasteView = ({ members, villages, setMembers, setVillages, db, logAd
                                                 <div className="bg-slate-50 p-4 sm:p-5 border-t border-emerald-100 animate-in slide-in-from-top-2 duration-200">
                                                     <p className="text-xs font-bold text-slate-500 mb-3">📦 ระบุน้ำหนักขยะ (กิโลกรัม)</p>
                                                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 mb-4">
-                                                        {['พลาสติก', 'กระดาษ', 'แก้ว', 'อลูมิเนียม', 'โลหะผสม'].map(type => (
+                                                        {['พลาสติก', 'กระดาษ', 'แก้ว', 'อลูมิเนียม', 'โลหะผสม', 'เหล็ก'].map(type => (
                                                             <div key={type} className="bg-white p-2 rounded-xl border border-slate-200">
                                                                 <label className="text-[10px] font-bold text-slate-400 block mb-1">{type}</label>
                                                                 <input
@@ -3558,7 +3571,7 @@ const App = () => {
         });
     }, []);
 
-    // 🌟 ฟังก์ชันแกนกลางสำหรับโหลดข้อมูลจาก DB (เรียกใช้เมื่อเปิดเว็บ หรือหลังกดเซฟ)
+    // ฟังก์ชันแกนกลางสำหรับโหลดข้อมูลจาก DB (เรียกใช้เมื่อเปิดเว็บ หรือหลังกดเซฟ)
     const refreshData = async () => {
         try {
             // 1. โหลดข้อมูลสมาชิก
@@ -3612,25 +3625,17 @@ const App = () => {
     useEffect(() => {
         const loadLogsFromCloud = async () => {
             try {
-                // 1. ดึงข้อมูลจากคอลเลกชัน admin_logs
-                const logsCollection = collection(db, "admin_logs");
-
-                // 2. เรียงลำดับจากใหม่ไปเก่า (ตาม timestamp ที่เราเพิ่งเพิ่มเข้าไป)
-                const q = query(logsCollection, orderBy("timestamp", "desc"), limit(50));
+                const q = query(collection(db, "admin_logs"), orderBy("timestamp", "desc"), limit(50));
                 const querySnapshot = await getDocs(q);
 
-                // 3. แปลงข้อมูลให้อยู่ในรูปแบบที่ State ของน้าต้องการ
+                // 🌟 นี่คือหัวใจสำคัญ: doc.id คือรหัสแท้ๆ ที่ Firebase สร้างให้
                 const fetchedLogs = querySnapshot.docs.map(doc => ({
+                    id: doc.id,
                     ...doc.data()
                 }));
 
-                // 4. เอา Log ที่ดึงมาได้ ไปใส่ใน State
                 setAdminLogs(fetchedLogs);
-
-                // 5. อัปเดต localStorage เผื่อกรณีออฟไลน์
                 localStorage.setItem('admin_action_logs', JSON.stringify(fetchedLogs));
-
-                console.log("โหลดประวัติจาก Cloud เรียบร้อย");
             } catch (err) {
                 console.error("ดึงประวัติจาก Cloud ไม่สำเร็จ:", err);
             }
@@ -3668,7 +3673,7 @@ const App = () => {
                         const pId = person.id || String(index);
                         if (String(pId) === String(personId)) {
                             const pObj = typeof person === 'string'
-                                ? { id: pId, name: person, balance: 0, credit: 0, wasteData: { 'พลาสติก': 0, 'กระดาษ': 0, 'แก้ว': 0, 'อลูมิเนียม': 0, 'โลหะผสม': 0 }, hasWelfare: false, isSorted: false }
+                                ? { id: pId, name: person, balance: 0, credit: 0, wasteData: { 'พลาสติก': 0, 'กระดาษ': 0, 'แก้ว': 0, 'อลูมิเนียม': 0, 'โลหะผสม': 0, 'เหล็ก': 0 }, hasWelfare: false, isSorted: false }
                                 : { ...person };
 
                             pObj.balance = (Number(pObj.balance) || 0) + finalBalanceToAdd;
@@ -3689,7 +3694,7 @@ const App = () => {
                     const newHouseBalance = updatedFamily.reduce((sum, p) => sum + (Number(p.balance) || 0), 0);
                     const newHouseCredit = updatedFamily.reduce((sum, p) => sum + (Number(p.credit) || 0), 0);
 
-                    const aggregatedWaste = { 'พลาสติก': 0, 'กระดาษ': 0, 'แก้ว': 0, 'อลูมิเนียม': 0, 'โลหะผสม': 0 };
+                    const aggregatedWaste = { 'พลาสติก': 0, 'กระดาษ': 0, 'แก้ว': 0, 'อลูมิเนียม': 0, 'โลหะผสม': 0, 'เหล็ก': 0 };
                     updatedFamily.forEach(person => {
                         Object.entries(person.wasteData || {}).forEach(([type, weight]) => {
                             aggregatedWaste[type] += Number(weight) || 0;
@@ -3818,39 +3823,31 @@ const App = () => {
     const [adminLogs, setAdminLogs] = useState([]);
     const [isRecordWasteOpen, setIsRecordWasteOpen] = useState(false);
     const [isMapLoaded, setIsMapLoaded] = useState(false);
-
-    // ➕ [เพิ่มใหม่]: ฟังก์ชันส่วนกลางสำหรับบันทึกประวัติการกระทำของเจ้าหน้าที่ระบบ
-    const logAdminAction = async (actionText) => { // 1. เติม async เข้าไป
+    const logAdminAction = async (actionText) => {
         const now = new Date();
         const ThaiMonths = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
         const timeString = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')} น.`;
         const dateString = `${now.getDate()} ${ThaiMonths[now.getMonth()]} ${now.getFullYear() + 543}`;
 
         const newLog = {
-            id: Date.now(),
             operator: currentUser ? currentUser.name : 'เจ้าหน้าที่ระบบ',
             action: actionText,
             time: timeString,
             date: dateString,
-            timestamp: now // ➕ เพิ่ม timestamp จริงๆ เอาไว้ใช้เรียงลำดับใน Cloud
+            timestamp: now // ใช้ timestamp ของจริง
         };
 
-        // 2. บันทึกลง Cloud (Firestore)
         try {
+            // มันจะสร้างรหัสเอกสารอัตโนมัติให้เราโดยอัตโนมัติ
             await addDoc(collection(db, "admin_logs"), newLog);
             console.log("บันทึกประวัติการทำงานลง Cloud สำเร็จ");
+
+            // อัปเดตหน้าจอทันที
+            await refreshData();
         } catch (err) {
             console.error("บันทึกประวัติลง Cloud ไม่สำเร็จ:", err);
         }
-
-        // 3. อัปเดตหน้าจอทันที (ไม่ต้องรอโหลดจาก Cloud)
-        setAdminLogs(prev => {
-            const nextLogs = [newLog, ...prev];
-            localStorage.setItem('admin_action_logs', JSON.stringify(nextLogs));
-            return nextLogs;
-        });
     };
-
     // --- ฐานข้อมูล 9 หมวด (เชื่อมต่อ LocalStorage) ---
     const [villages, setVillages] = useState(() => {
         const saved = localStorage.getItem('village_data');
@@ -3862,7 +3859,7 @@ const App = () => {
             name: `หมวดที่ ${i + 1}`,
             goal: 1000,
             wasteData: {
-                'พลาสติก': 0, 'กระดาษ': 0, 'แก้ว': 0, 'อลูมิเนียม': 0, 'โลหะผสม': 0
+                'พลาสติก': 0, 'กระดาษ': 0, 'แก้ว': 0, 'อลูมิเนียม': 0, 'โลหะผสม': 0, 'เหล็ก': 0
             },
             credit: 0
         }));
@@ -3942,29 +3939,49 @@ const App = () => {
 
     // --- 4. คำนวณค่าการลดการปล่อยคาร์บอน (Carbon Stats) ---
     const carbonStats = useMemo(() => {
+        // ถ้าระบบว่างเปล่า ไม่มีสมาชิกเลย ให้ตอบ 0 ทันที (แก้ปัญหาเลขค้าง)
+        if (!members || members.length === 0) return 0;
+
         const FACTORS = {
             'พลาสติก': 1.0310,
-            'กระดาษ': 5.6735,     // มาจาก 3.5460 + 2.1275
+            'กระดาษ': 5.6735,
             'แก้ว': 0.2760,
             'อลูมิเนียม': 9.1270,
-            'โลหะผสม': 4.3910
+            'โลหะผสม': 4.3910,
+            'เหล็ก': 1.8320
         };
-        let total = 0;
-        villages.forEach(v => {
-            Object.entries(v.wasteData || {}).forEach(([type, weight]) => {
-                total += (Number(weight) * (FACTORS[type] || 0));
-            });
+
+        let totalCarbon = 0;
+
+        // วนลูปเข้าไปดูข้อมูลของบ้านแต่ละหลัง
+        members.forEach(house => {
+            const persons = house.familyMembers || [];
+
+            if (persons.length > 0) {
+                // ถ้าระบบใหม่ (มีข้อมูลระดับบุคคล) ให้คำนวณจากขยะของทุกคนรวมกัน
+                persons.forEach(person => {
+                    Object.entries(person.wasteData || {}).forEach(([type, weight]) => {
+                        totalCarbon += (Number(weight) * (FACTORS[type] || 0));
+                    });
+                });
+            } else {
+                // เผื่อไว้รองรับโครงสร้างบ้านแบบเก่า (กันพัง)
+                Object.entries(house.wasteData || {}).forEach(([type, weight]) => {
+                    totalCarbon += (Number(weight) * (FACTORS[type] || 0));
+                });
+            }
         });
-        return total;
-    }, [villages]); // คำนวณใหม่เฉพาะเมื่อข้อมูลหมู่บ้าน (villages) เปลี่ยนแปลง
+
+        return totalCarbon;
+    }, [members]);
 
     // --- 5. สรุปสถิติ 5 กล่องหลักสำหรับหน้า Dashboard ---
     const stats = useMemo(() => {
         // 🌟 1. กำหนดประเภทขยะหลัก เพื่อป้องกันการดึง Key ประหลาด (เช่น ตัวเลข 1, 2, 3) มาแสดงผล
-        const validWasteTypes = ['พลาสติก', 'กระดาษ', 'แก้ว', 'อลูมิเนียม', 'โลหะผสม'];
+        const validWasteTypes = ['พลาสติก', 'กระดาษ', 'แก้ว', 'อลูมิเนียม', 'โลหะผสม', 'เหล็ก'];
 
         let totalWeight = 0;
-        let typeTotals = { 'พลาสติก': 0, 'กระดาษ': 0, 'แก้ว': 0, 'อลูมิเนียม': 0, 'โลหะผสม': 0 };
+        let typeTotals = { 'พลาสติก': 0, 'กระดาษ': 0, 'แก้ว': 0, 'อลูมิเนียม': 0, 'โลหะผสม': 0, 'เหล็ก': 0 };
         let totalBalance = 0;
         let totalIndividuals = 0; // เพิ่มการนับรายบุคคล
 
@@ -4020,7 +4037,7 @@ const App = () => {
                 icon: <Users size={28} className="text-yellow-500" />
             },
             {
-                label: 'ลดการปล่อยคาร์บอน (kgCO₂e)', // ย้ายหน่วยมาไว้ตรงนี้
+                label: 'ลดการปล่อยคาร์บอน (kgCO₂e)',
                 value: `${(Number(carbonStats) || 0).toLocaleString(undefined, { minimumFractionDigits: 4, maximumFractionDigits: 4 })}`,
                 icon: <Leaf size={28} className="text-emerald-500" />,
                 hasTooltip: true
@@ -4044,7 +4061,7 @@ const App = () => {
                     acc[type] = (acc[type] || 0) + Number(data[type] || 0);
                 });
                 return acc;
-            }, { 'พลาสติก': 0, 'กระดาษ': 0, 'แก้ว': 0, 'อลูมิเนียม': 0, 'โลหะผสม': 0 });
+            }, { 'พลาสติก': 0, 'กระดาษ': 0, 'แก้ว': 0, 'อลูมิเนียม': 0, 'โลหะผสม': 0, 'เหล็ก': 0 });
             // 3. ➕ คำนวณน้ำหนักขยะรวม (รวมทุกประเภทของทุกคนในหมวด)
             const totalWasteInVillage = vMembers.reduce((sum, m) => {
                 const houseWaste = Object.values(m.wasteData || {}).reduce((a, b) => a + Number(b), 0);
@@ -4063,7 +4080,7 @@ const App = () => {
 
     // --- 7. ข้อมูลสำหรับกราฟแท่ง (Bar Chart Calculation) ---
     const wasteTypeData = useMemo(() => {
-        const types = ['พลาสติก', 'กระดาษ', 'แก้ว', 'อลูมิเนียม', 'โลหะผสม'];
+        const types = ['พลาสติก', 'กระดาษ', 'แก้ว', 'อลูมิเนียม', 'โลหะผสม', 'เหล็ก'];
 
         // 1. รวมขยะทุกประเภทจากสมาชิกทุกคน
         const totals = allMembers.reduce((acc, m) => {
